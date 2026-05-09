@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home3/sevireco/public_html/gardenai
+    - /bin/cp -r * $DEPLOYPATH

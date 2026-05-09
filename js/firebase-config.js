@@ -6,7 +6,9 @@ import {
   sendEmailVerification, sendPasswordResetEmail, updateProfile,
   setPersistence, browserLocalPersistence
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBIGG6KiETVGWMe66D7WmJcgJYM2gAztaM",
@@ -19,7 +21,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const firestoreDb = getFirestore(app);
+export const firestoreDb = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
 
 // Force local persistence so sessions survive iOS PWA restarts
 setPersistence(auth, browserLocalPersistence).catch(() => {});

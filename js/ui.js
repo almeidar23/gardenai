@@ -400,9 +400,15 @@ const ADMIN_UID = 'BagrWk9uOOWw7ywxbiUyjLlxN8s2'; // almeidar23@gmail.com
 export async function renderSettings() {
   const user = DB.getUser();
   const isAdmin = user?.uid === ADMIN_UID;
-  const provider = await DB.getSetting('aiProvider') || 'gemini';
-  const geminiKey = await DB.getSetting('geminiApiKey') || '';
-  const groqKey = await DB.getSetting('groqApiKey') || '';
+  const [providerRaw, geminiKeyRaw, groqKeyRaw, currentThemeRaw] = await Promise.all([
+    DB.getSetting('aiProvider'),
+    DB.getSetting('geminiApiKey'),
+    DB.getSetting('groqApiKey'),
+    DB.getSetting('theme')
+  ]);
+  const provider = providerRaw || 'gemini';
+  const geminiKey = geminiKeyRaw || '';
+  const groqKey = groqKeyRaw || '';
 
   const gMask = geminiKey ? geminiKey.slice(0,8)+'••••••••' : '';
   const rqMask = groqKey ? groqKey.slice(0,8)+'••••••••' : '';
@@ -449,7 +455,7 @@ export async function renderSettings() {
       <button class="btn btn-primary btn-block" data-action="saveAiSettings" id="save-ai-btn">💾 Guardar Configuración IA</button>
     </div></div>` : '';
 
-  const currentTheme = await DB.getSetting('theme') || 'dark';
+  const currentTheme = currentThemeRaw || 'dark';
 
   return `<div class="section-title">⚙️ Configuración</div><div class="section-subtitle">Ajustes de la aplicación</div>
     <div class="settings-section"><h3>🎨 Apariencia</h3><div class="glass-card">

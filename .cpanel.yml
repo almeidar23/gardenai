@@ -2,4 +2,9 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home3/sevireco/public_html/gardenai
-    - /bin/cp -r * $DEPLOYPATH
+    - /bin/cp index.html $DEPLOYPATH/index.html
+    - /bin/cp manifest.json $DEPLOYPATH/manifest.json
+    - /bin/cp sw.js $DEPLOYPATH/sw.js
+    - /bin/cp -r css $DEPLOYPATH/css
+    - /bin/cp -r js $DEPLOYPATH/js
+    - /bin/cp -r icons $DEPLOYPATH/icons

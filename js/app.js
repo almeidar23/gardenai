@@ -23,7 +23,8 @@ import { runMigration } from './migration.js';
 const mainEl = () => document.getElementById('main-content');
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme === 'botanical' ? 'botanical' : '');
+  const validThemes = ['botanical', 'tropical'];
+  document.documentElement.setAttribute('data-theme', validThemes.includes(theme) ? theme : '');
 }
 const modalsEl = () => document.getElementById('modals');
 let currentRoute = '';

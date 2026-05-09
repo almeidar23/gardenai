@@ -1,0 +1,21 @@
+{
+  "name": "GardenAI - Jardín Inteligente",
+  "short_name": "GardenAI",
+  "description": "Gestión inteligente de tu jardín con análisis por IA",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0f0d",
+  "theme_color": "#0a0f0d",
+  "orientation": "portrait-primary",
+  "categories": ["lifestyle", "utilities"],
+  "lang": "es",
+  "icons": [
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

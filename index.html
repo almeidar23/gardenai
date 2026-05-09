@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="description" content="GardenAI - Gestión inteligente de tu jardín con análisis por IA. Monitorea tus macetas, detecta plagas y lee tu analizador de suelo.">
+  <meta name="theme-color" content="#0a0f0d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GardenAI">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icons/icon-512.png">
+  <link rel="apple-touch-icon" href="./icons/icon-512.png">
+  <link rel="stylesheet" href="./css/styles.css">
+  <title>GardenAI — Jardín Inteligente</title>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <h1 id="header-title">
+        <span class="logo-icon">🌱</span> GardenAI
+      </h1>
+    </header>
+
+    <!-- Main content area -->
+    <main class="app-main" id="main-content">
+      <!-- Rendered by JS -->
+    </main>
+
+    <!-- Bottom navigation -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-item active" data-nav="home" id="nav-home">
+        <span class="nav-icon">🏠</span>
+        Inicio
+      </button>
+      <button class="nav-item" data-nav="tasks" id="nav-tasks">
+        <span class="nav-icon">📋</span>
+        Tareas
+      </button>
+      <button class="nav-item" data-nav="settings" id="nav-settings">
+        <span class="nav-icon">⚙️</span>
+        Ajustes
+      </button>
+    </nav>
+
+    <!-- Modals container -->
+    <div id="modals"></div>
+
+    <!-- Toast container -->
+    <div id="app-toast" class="toast"></div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

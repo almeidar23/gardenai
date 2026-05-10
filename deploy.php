@@ -9,6 +9,5 @@ chdir($repo);
 
 exec('git fetch origin main 2>&1', $fetch);
 exec('git reset --hard origin/main 2>&1', $reset);
-exec('/usr/local/cpanel/bin/uapi --user=sevireco VersionControlDeployment create repository_root=' . escapeshellarg($repo) . ' 2>&1', $deploy);
 
-echo json_encode(['fetch' => $fetch, 'reset' => $reset, 'deploy' => $deploy, 'status' => 'ok']);
+echo json_encode(['fetch' => $fetch, 'reset' => $reset, 'status' => 'ok']);

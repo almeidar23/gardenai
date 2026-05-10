@@ -211,6 +211,13 @@
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* iOS tap fixes */
+button, [data-action], [data-navigate], [data-nav] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
@@ -1270,31 +1277,42 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 /* ===== SELECTION CIRCLES (always visible) ===== */
 .pot-select-check {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.4);
-  background: rgba(0,0,0,0.2);
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 0 0 50% 0;
+  background: transparent;
   z-index: 2;
   cursor: pointer;
   transition: var(--transition);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px;
 }
 
-.pot-select-check.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+.pot-select-check::after {
+  content: '';
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.2);
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .pot-select-check.checked::after {
+  background: var(--accent);
+  border-color: var(--accent);
   content: '✓';
-  display: block;
   text-align: center;
-  line-height: 16px;
-  font-size: 0.7rem;
+  line-height: 20px;
+  font-size: 0.72rem;
   font-weight: 800;
-  color: var(--bg-primary);
+  color: #fff;
 }
 
 .pot-card.pot-selected {
@@ -1304,31 +1322,42 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 .photo-select-check {
   position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.5);
-  background: rgba(0,0,0,0.25);
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 0 0 50% 0;
+  background: transparent;
   z-index: 2;
   cursor: pointer;
   transition: var(--transition);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 6px;
 }
 
-.photo-select-check.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+.photo-select-check::after {
+  content: '';
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.25);
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .photo-select-check.checked::after {
+  background: var(--accent);
+  border-color: var(--accent);
   content: '✓';
-  display: block;
   text-align: center;
-  line-height: 14px;
-  font-size: 0.6rem;
+  line-height: 18px;
+  font-size: 0.65rem;
   font-weight: 800;
-  color: var(--bg-primary);
+  color: #fff;
 }
 
 /* ===== BULK SELECT MODE ===== */

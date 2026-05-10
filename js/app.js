@@ -68,7 +68,12 @@ function updateBulkBar() {
 }
 
 // ===== ROUTER =====
+let _navigating = false;
+let _pendingHash = null;
+
 async function navigate(hash) {
+  if (_navigating) { _pendingHash = hash; return; }
+  _navigating = true;
   clearPhotoSelection();
   clearPotSelection();
   if (!hash || hash === '#' || hash === '#home') {
@@ -109,6 +114,12 @@ async function navigate(hash) {
   if (window.location.hash !== hash) history.pushState(null, '', hash);
   updateNav();
   window.scrollTo(0, 0);
+  _navigating = false;
+  if (_pendingHash && _pendingHash !== hash) {
+    const next = _pendingHash;
+    _pendingHash = null;
+    navigate(next);
+  }
 }
 
 function updateNav() {

@@ -9,18 +9,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull latest from GitHub
+      - name: Trigger deploy webhook
         run: |
-          curl -s "https://7ire.com:2083/execute/VersionControl/update" \
-            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
-            --data-urlencode "repository=/home3/sevireco/public_html/gardenai" \
-            --data-urlencode "branch=main"
-
-      - name: Wait for pull
-        run: sleep 5
-
-      - name: Deploy HEAD commit
-        run: |
-          curl -s "https://7ire.com:2083/execute/VersionControl/create_deployment" \
-            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
-            --data-urlencode "repository=/home3/sevireco/public_html/gardenai"
+          curl -s -X POST "https://7ire.com/gardenai/deploy.php" \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac '${{ secrets.DEPLOY_SECRET }}' | cut -d' ' -f2)" \
+            -d '{}'

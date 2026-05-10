@@ -78,15 +78,14 @@ export async function renderHome() {
     const plantTypes = (pot.plantTypes || (pot.plantType ? [pot.plantType] : [])).map(cleanPlantName).filter(Boolean);
     const plantTypeHtml = plantTypes.length ? `<div class="pot-plant-type">${escapeHtml(plantTypes.join(', '))}</div>` : '';
     potsHtml += `<div class="glass-card pot-card" data-navigate="pot/${pot.id}" id="pot-card-${pot.id}">
-      <div class="pot-select-check" data-action="togglePotSelect" data-pot-id="${pot.id}"></div>
       ${statusHtml}${thumbHtml}
       <div class="pot-name">${escapeHtml(pot.name)}</div>${plantTypeHtml}
       <div class="pot-count">${photos.length} foto${photos.length!==1?'s':''}</div>
     </div>`;
   }
   potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
-  return `<div class="section-title">Mis Macetas</div>
-    <div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''} · toca ○ para seleccionar</div>
+  return `<div class="flex items-center justify-between mb-8"><div class="section-title">Mis Macetas</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas">✅</button></div>
+    <div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 
@@ -164,7 +163,7 @@ export async function renderPot(potId) {
         let bc = photo.type==='analyzer'?'badge-analyzer':'badge-plant';
         let bt = photo.type==='analyzer'?'📊 Suelo':'🌿 Planta';
         if (!analysis && photo.type!=='analyzer') { bc='badge-pending'; bt='⏳ Pendiente'; }
-        content += `<div class="photo-thumb" data-action="viewPhoto" data-photo-id="${photo.id}" id="photo-${photo.id}"><div class="photo-select-check"></div><img src="${url}" alt="Foto" loading="lazy"><span class="photo-badge ${bc}">${bt}</span></div>`;
+        content += `<div class="photo-thumb" data-action="viewPhoto" data-photo-id="${photo.id}" id="photo-${photo.id}"><img src="${url}" alt="Foto" loading="lazy"><span class="photo-badge ${bc}">${bt}</span></div>`;
       }
       content += '</div>';
     }
@@ -173,7 +172,7 @@ export async function renderPot(potId) {
   const plantSubtitle = plantTypes.length
     ? `🌸 ${escapeHtml(plantTypes.join(', '))}${pot.description ? ' · ' + escapeHtml(pot.description) : ''}`
     : escapeHtml(pot.description || 'Sin descripción');
-  return `<div class="flex items-center justify-between mb-16"><div><div class="section-title">${pot.emoji||'🪴'} ${escapeHtml(pot.name)}</div><div class="section-subtitle">${plantSubtitle}</div></div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar">☑️</button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
+  return `<div class="flex items-center justify-between mb-16"><div><div class="section-title">${pot.emoji||'🪴'} ${escapeHtml(pot.name)}</div><div class="section-subtitle">${plantSubtitle}</div></div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar">✅</button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
 }
 
 // ===== PHOTO DETAIL VIEW =====

@@ -30,6 +30,7 @@ const modalsEl = () => document.getElementById('modals');
 let currentRoute = '';
 let selectedPhotos = new Set();
 let photoSelectMode = false;
+let potSelectMode = false;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -77,6 +78,8 @@ async function navigate(hash) {
   _navigating = true;
   clearPhotoSelection();
   clearPotSelection();
+  photoSelectMode = false;
+  potSelectMode = false;
   if (!hash || hash === '#' || hash === '#home') {
     currentRoute = 'home';
     mainEl().innerHTML = await renderHome();
@@ -105,8 +108,9 @@ async function navigate(hash) {
       currentRoute = 'pot';
       const pot = await DB.getPot(Number(parts[1]));
       const escapeHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      const potHtml = await renderPot(parts[1]);
       document.getElementById('header-title').innerHTML = `<button class="header-back" data-action="back">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
-      mainEl().innerHTML = await renderPot(parts[1]);
+      mainEl().innerHTML = potHtml;
     }
   } else if (hash === '#settings') {
     currentRoute = 'settings';
@@ -152,13 +156,19 @@ async function handleAction(action, target) {
       const grid = document.querySelector('.photos-grid');
       if (grid) grid.classList.toggle('select-mode', photoSelectMode);
       const btn = document.getElementById('select-mode-btn');
-      if (btn) {
-        btn.style.background = photoSelectMode ? 'var(--accent-glow)' : '';
-        btn.style.borderColor = photoSelectMode ? 'var(--accent)' : '';
-        btn.style.color = photoSelectMode ? 'var(--accent)' : '';
-      }
+      if (btn) btn.textContent = photoSelectMode ? '🟢' : '✅';
       if (!photoSelectMode) clearPhotoSelection();
       showToast(photoSelectMode ? 'Toca fotos para seleccionar' : 'Selección desactivada');
+      break;
+    }
+    case 'enterPotSelectMode': {
+      potSelectMode = !potSelectMode;
+      const potsGrid = document.getElementById('pots-grid');
+      if (potsGrid) potsGrid.classList.toggle('select-mode', potSelectMode);
+      const pbtn = document.getElementById('pot-select-mode-btn');
+      if (pbtn) pbtn.textContent = potSelectMode ? '🟢' : '✅';
+      if (!potSelectMode) clearPotSelection();
+      showToast(potSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
       break;
     }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
@@ -898,7 +908,18 @@ document.addEventListener('click', (e) => {
     return;
   }
   const nt = e.target.closest('[data-navigate]');
-  if (nt) { e.preventDefault(); showLoading(); navigate('#' + nt.dataset.navigate); return; }
+  if (nt) {
+    e.preventDefault();
+    const nav = nt.dataset.navigate;
+    if (potSelectMode && nav.startsWith('pot/') && !nav.includes('/photo/')) {
+      const potId = nav.split('/')[1];
+      if (potId) togglePotSelection(potId);
+      return;
+    }
+    showLoading();
+    navigate('#' + nav);
+    return;
+  }
   const ni = e.target.closest('[data-nav]');
   if (ni) {
     e.preventDefault();

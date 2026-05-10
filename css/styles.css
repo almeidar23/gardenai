@@ -1287,95 +1287,18 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 
 /* ===== SELECTION CIRCLES (always visible) ===== */
-.pot-select-check {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 0 0 50% 0;
-  background: transparent;
-  z-index: 2;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 8px;
-}
-
-.pot-select-check::after {
-  content: '';
-  display: block;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.5);
-  background: rgba(0,0,0,0.2);
-  transition: var(--transition);
-  flex-shrink: 0;
-}
-
-.pot-select-check.checked::after {
-  background: var(--accent);
-  border-color: var(--accent);
-  content: '✓';
-  text-align: center;
-  line-height: 20px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #fff;
-}
-
 .pot-card.pot-selected {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
-}
-
-.photo-select-check {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: 0 0 50% 0;
-  background: transparent;
-  z-index: 3;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 7px;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-.photo-select-check::after {
-  content: '';
-  display: block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,0.9);
-  background: rgba(0,0,0,0.35);
-  transition: var(--transition);
-  flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
-}
-
-.photo-select-check.checked::after {
-  background: var(--accent);
-  border-color: var(--accent);
-  content: '✓';
-  text-align: center;
-  line-height: 18px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: #fff;
+  background: var(--accent-glow);
 }
 
 /* ===== BULK SELECT MODE ===== */
+.select-mode .photo-thumb {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
 .select-mode .photo-thumb::after {
   content: '';
   position: absolute;
@@ -1390,23 +1313,50 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   pointer-events: none;
 }
 
+.select-mode .photo-thumb.selected {
+  opacity: 1;
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .select-mode .photo-thumb.selected::after {
   content: '✓';
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg-primary);
+  color: #fff;
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 20px;
   text-align: center;
 }
 
-.select-mode .photo-thumb.selected {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.pots-grid.select-mode .pot-card[data-navigate] {
+  cursor: pointer;
 }
 
-.select-mode .photo-thumb { cursor: pointer; }
+.pots-grid.select-mode .pot-card[data-navigate]::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.25);
+  pointer-events: none;
+}
+
+.pots-grid.select-mode .pot-card.pot-selected::after {
+  content: '✓';
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
 
 .bulk-action-bar {
   position: fixed;

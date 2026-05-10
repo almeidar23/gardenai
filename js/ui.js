@@ -164,7 +164,7 @@ export async function renderPot(potId) {
         let bc = photo.type==='analyzer'?'badge-analyzer':'badge-plant';
         let bt = photo.type==='analyzer'?'📊 Suelo':'🌿 Planta';
         if (!analysis && photo.type!=='analyzer') { bc='badge-pending'; bt='⏳ Pendiente'; }
-        content += `<div class="photo-thumb" data-action="viewPhoto" data-photo-id="${photo.id}" id="photo-${photo.id}"><div class="photo-select-check" data-action="togglePhotoSelect" data-photo-id="${photo.id}"></div><img src="${url}" alt="Foto" loading="lazy"><span class="photo-badge ${bc}">${bt}</span></div>`;
+        content += `<div class="photo-thumb" data-action="viewPhoto" data-photo-id="${photo.id}" id="photo-${photo.id}"><div class="photo-select-check"></div><img src="${url}" alt="Foto" loading="lazy"><span class="photo-badge ${bc}">${bt}</span></div>`;
       }
       content += '</div>';
     }

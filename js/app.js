@@ -202,11 +202,6 @@ async function handleAction(action, target) {
       if (p) navigate(`#pot/${p.potId}/photo/${pid}`);
       break;
     }
-    case 'togglePhotoSelect': {
-      const pid = target.dataset.photoId;
-      if (pid) togglePhotoSelection(pid);
-      break;
-    }
     case 'togglePotSelect': {
       const potId = target.dataset.potId;
       if (potId) togglePotSelection(potId);
@@ -892,14 +887,6 @@ document.addEventListener('click', (e) => {
   const at = e.target.closest('[data-action]');
   if (at) {
     if (at.dataset.action === 'closeModal' && e.target !== at) return;
-    // Circle tap always selects, regardless of mode
-    if (at.dataset.action === 'togglePhotoSelect') {
-      e.preventDefault();
-      e.stopPropagation();
-      const pid = at.dataset.photoId;
-      if (pid) togglePhotoSelection(pid);
-      return;
-    }
     if (photoSelectMode && at.dataset.action === 'viewPhoto') {
       e.preventDefault();
       const pid = at.dataset.photoId;

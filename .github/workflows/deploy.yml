@@ -19,7 +19,10 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: public_html/gardenai/
           dangerous-clean-slate: true
+          timeout: 60000
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules/**
+            **/CLAUDE.md
+            **/.ftp-deploy-sync-state.json

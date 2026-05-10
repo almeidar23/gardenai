@@ -1314,28 +1314,9 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   cursor: pointer;
 }
 
-.pots-grid.select-mode .pot-card[data-navigate]::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.7);
-  background: rgba(0,0,0,0.25);
-  pointer-events: none;
-}
-
-.pots-grid.select-mode .pot-card.pot-selected::after {
-  content: '✓';
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 800;
-  line-height: 20px;
-  text-align: center;
+.pots-grid.select-mode .pot-card.pot-selected {
+  outline: 3px solid #16a34a;
+  outline-offset: 2px;
 }
 
 .bulk-action-bar {

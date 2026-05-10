@@ -783,6 +783,13 @@ function initPhotoZoom() {
     wrapper.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
   }
 
+  function isCenterZone(touch) {
+    const rect = wrapper.getBoundingClientRect();
+    const relY = (touch.clientY - rect.top) / rect.height;
+    // Only capture touch in middle 60% vertically — top/bottom 20% allows page scroll
+    return relY > 0.20 && relY < 0.80;
+  }
+
   wrapper.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       e.preventDefault();
@@ -791,12 +798,14 @@ function initPhotoZoom() {
     } else if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastTap < 280) {
-        e.preventDefault();
-        apply(scale > 1 ? 1 : 2.5, 0, 0);
+        if (isCenterZone(e.touches[0])) {
+          e.preventDefault();
+          apply(scale > 1 ? 1 : 2.5, 0, 0);
+        }
         lastTap = 0;
       } else {
         lastTap = now;
-        if (scale > 1) {
+        if (scale > 1 && isCenterZone(e.touches[0])) {
           isPanning = true;
           panStartX = e.touches[0].clientX - tx;
           panStartY = e.touches[0].clientY - ty;
@@ -883,6 +892,14 @@ document.addEventListener('click', (e) => {
   const at = e.target.closest('[data-action]');
   if (at) {
     if (at.dataset.action === 'closeModal' && e.target !== at) return;
+    // Circle tap always selects, regardless of mode
+    if (at.dataset.action === 'togglePhotoSelect') {
+      e.preventDefault();
+      e.stopPropagation();
+      const pid = at.dataset.photoId;
+      if (pid) togglePhotoSelection(pid);
+      return;
+    }
     if (photoSelectMode && at.dataset.action === 'viewPhoto') {
       e.preventDefault();
       const pid = at.dataset.photoId;

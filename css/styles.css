@@ -1336,29 +1336,32 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   position: absolute;
   top: 0;
   left: 0;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 0 0 50% 0;
   background: transparent;
-  z-index: 2;
+  z-index: 3;
   cursor: pointer;
   transition: var(--transition);
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 6px;
+  padding: 7px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .photo-select-check::after {
   content: '';
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.7);
-  background: rgba(0,0,0,0.25);
+  border: 2.5px solid rgba(255,255,255,0.9);
+  background: rgba(0,0,0,0.35);
   transition: var(--transition);
   flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
 .photo-select-check.checked::after {

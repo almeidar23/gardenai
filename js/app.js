@@ -11,7 +11,7 @@ import { captureFromCamera, uploadFromGallery, blobToDataURL } from './camera.js
 import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
-  renderProducts, renderProductDetail, renderPotModal, renderPhotoModal,
+  renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal,
   renderEditPhotoModal, renderPotScheduleModal, renderLogin,
   renderBulkDateModal, renderBulkNotesModal,
   renderProductModal, renderBulkPotTaskModal,
@@ -195,13 +195,18 @@ async function handleAction(action, target) {
       } break;
     }
     case 'addPhoto': { modalsEl().innerHTML = renderPhotoModal(target.dataset.potId); break; }
+    case 'selectPhotoType': {
+      modalsEl().innerHTML = renderPhotoSourceModal(target.dataset.potId, target.dataset.photoType);
+      break;
+    }
     case 'capturePhoto': {
       const potId = target.dataset.potId;
+      const photoType = target.dataset.photoType || 'plant';
       try {
         showToast('Abriendo cámara...');
         const blob = await captureFromCamera();
         closeModal();
-        await savePhoto(potId, blob);
+        await savePhoto(potId, blob, photoType);
       } catch(e) {
         closeModal();
         if (e.message !== 'No se tomó ninguna foto') showToast('Error: ' + e.message);
@@ -210,10 +215,11 @@ async function handleAction(action, target) {
     }
     case 'uploadPhoto': {
       const potId = target.dataset.potId;
+      const photoType = target.dataset.photoType || 'plant';
       try {
         const blob = await uploadFromGallery();
         closeModal();
-        await savePhoto(potId, blob);
+        await savePhoto(potId, blob, photoType);
       } catch(e) {
         closeModal();
         if (e.message !== 'No se seleccionó ninguna foto') showToast('Error: ' + e.message);
@@ -482,18 +488,13 @@ async function handleAction(action, target) {
   }
 }
 
-async function savePhoto(potId, blob) {
+async function savePhoto(potId, blob, type = 'plant') {
   const configured = await isConfigured();
-  let type = 'plant';
-  if (configured) {
-    showToast('Identificando foto...');
-    type = await detectPhotoType(blob);
-  }
   const photo = await DB.addPhoto({ potId: Number(potId), type, blob, createdAt: new Date().toISOString() });
   clearPhotoCache();
   await navigate(`#pot/${potId}`);
   if (configured && type === 'analyzer') {
-    showToast('Analizador detectado — leyendo valores...');
+    showToast('Leyendo analizador...');
     setTimeout(() => runAnalysis(photo.id, blob), 500);
   } else {
     showToast('Foto de planta guardada ✓');

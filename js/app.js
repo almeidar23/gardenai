@@ -67,60 +67,74 @@ function updateBulkBar() {
 
 // ===== ROUTER =====
 let _navigating = false;
-let _pendingHash = null;
+let _navToken = 0; // incremented on each navigate call to cancel stale renders
 
 async function navigate(hash) {
-  if (_navigating) { _pendingHash = hash; return; }
+  const token = ++_navToken;
+  if (_navigating) {
+    // Already navigating — just record latest destination, current render will restart after
+    _navigating = false; // allow re-entry for the new hash
+  }
   _navigating = true;
   clearPhotoSelection();
   clearPotSelection();
   photoSelectMode = false;
   potSelectMode = false;
+
+  const stale = () => token !== _navToken; // true if a newer navigate() started
+
+  let html = '';
+  let newRoute = currentRoute;
+  let headerHtml = null;
+  const escapeHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
   if (!hash || hash === '#' || hash === '#home') {
-    currentRoute = 'home';
-    mainEl().innerHTML = await renderHome();
+    newRoute = 'home';
+    html = await renderHome();
   } else if (hash === '#tasks') {
-    currentRoute = 'tasks';
-    mainEl().innerHTML = await renderTasks();
+    newRoute = 'tasks';
+    html = await renderTasks();
   } else if (hash === '#products') {
-    currentRoute = 'products';
-    document.getElementById('header-title').innerHTML = '<button class="header-back" data-action="back">←</button> Productos';
-    mainEl().innerHTML = await renderProducts();
+    newRoute = 'products';
+    headerHtml = '<button class="header-back" data-action="back">←</button> Productos';
+    html = await renderProducts();
   } else if (hash.startsWith('#product/')) {
-    currentRoute = 'product';
+    newRoute = 'product';
     const slug = hash.split('/')[1];
     const prod = await DB.getProduct(slug);
-    const escapeHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    document.getElementById('header-title').innerHTML = `<button class="header-back" data-action="back">←</button> ${escapeHtml(prod?.icon||'🧴')} ${escapeHtml(prod?.name||'Producto')}`;
-    mainEl().innerHTML = await renderProductDetail(slug);
+    headerHtml = `<button class="header-back" data-action="back">←</button> ${escapeHtml(prod?.icon||'🧴')} ${escapeHtml(prod?.name||'Producto')}`;
+    html = await renderProductDetail(slug);
   } else if (hash.startsWith('#pot/')) {
     const parts = hash.split('/');
     if (parts.length > 2 && parts[2] === 'photo') {
-      currentRoute = 'photo';
-      document.getElementById('header-title').innerHTML = '<button class="header-back" data-action="back">←</button> Foto';
-      mainEl().innerHTML = await renderPhotoDetail(parts[3]);
-      initPhotoZoom();
+      newRoute = 'photo';
+      headerHtml = '<button class="header-back" data-action="back">←</button> Foto';
+      html = await renderPhotoDetail(parts[3]);
     } else {
-      currentRoute = 'pot';
-      const pot = await DB.getPot(Number(parts[1]));
-      const escapeHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      const potHtml = await renderPot(parts[1]);
-      document.getElementById('header-title').innerHTML = `<button class="header-back" data-action="back">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
-      mainEl().innerHTML = potHtml;
+      newRoute = 'pot';
+      const [pot, potHtml] = await Promise.all([
+        DB.getPot(Number(parts[1])),
+        renderPot(parts[1])
+      ]);
+      headerHtml = `<button class="header-back" data-action="back">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
+      html = potHtml;
     }
   } else if (hash === '#settings') {
-    currentRoute = 'settings';
-    mainEl().innerHTML = await renderSettings();
+    newRoute = 'settings';
+    html = await renderSettings();
   }
+
+  // If a newer navigation started while we were loading, abort — don't update DOM
+  if (stale()) { _navigating = false; return; }
+
+  currentRoute = newRoute;
+  if (headerHtml) document.getElementById('header-title').innerHTML = headerHtml;
+  mainEl().innerHTML = html;
+  if (hash.startsWith('#pot/') && hash.includes('/photo/')) initPhotoZoom();
   if (window.location.hash !== hash) history.pushState(null, '', hash);
   updateNav();
   window.scrollTo(0, 0);
   _navigating = false;
-  if (_pendingHash && _pendingHash !== hash) {
-    const next = _pendingHash;
-    _pendingHash = null;
-    navigate(next);
-  }
 }
 
 function updateNav() {
@@ -927,7 +941,7 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     ni.classList.add('active');
     showLoading();
-    window.location.hash = '#' + ni.dataset.nav;
+    navigate('#' + ni.dataset.nav);
   }
 });
 

@@ -60,13 +60,20 @@ export async function renderHome() {
     Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
     Promise.all(pots.map(p => DB.getAnalysesByPot(p.id)))
   ]);
+  // Precompute all thumb URLs in parallel
+  const thumbUrls = await Promise.all(pots.map((pot, i) => {
+    const photos = photosArr[i];
+    return (photos.length > 0 && (photos[0].blob || photos[0].storageUrl || photos[0].imageData))
+      ? getPhotoURL(photos[0]) : Promise.resolve(null);
+  }));
   let potsHtml = '';
   for (let i = 0; i < pots.length; i++) {
     const pot = pots[i];
     const photos = photosArr[i];
     const analyses = analysesArr[i];
-    let thumbHtml = photos.length > 0 && (photos[0].blob || photos[0].storageUrl || photos[0].imageData)
-      ? `<img class="pot-thumb" src="${await getPhotoURL(photos[0])}" alt="${escapeHtml(pot.name)}">`
+    const thumbUrl = thumbUrls[i];
+    let thumbHtml = thumbUrl
+      ? `<img class="pot-thumb" src="${thumbUrl}" alt="${escapeHtml(pot.name)}">`
       : `<div class="pot-icon">${pot.emoji || '🪴'}</div>`;
     let statusHtml = '';
     if (analyses.length > 0) {
@@ -152,14 +159,20 @@ export async function renderPot(potId) {
   if (photos.length === 0) {
     content = `<div class="empty-state"><div class="empty-icon">📷</div><p>Aún no hay fotos. Toma una foto de tu planta o del analizador de suelo.</p></div>`;
   } else {
+    // Fetch all photo URLs and analyses in parallel
+    const [photoUrls, photoAnalyses] = await Promise.all([
+      Promise.all(photos.map(p => getPhotoURL(p))),
+      Promise.all(photos.map(p => DB.getAnalysisByPhoto(p.id)))
+    ]);
+    const photoMap = {};
+    photos.forEach((p, i) => { photoMap[p.id] = { url: photoUrls[i], analysis: photoAnalyses[i] }; });
     const groups = {};
     for (const p of photos) { const k = dateKey(p.createdAt); if(!groups[k]) groups[k]=[]; groups[k].push(p); }
     for (const date of Object.keys(groups).sort((a,b)=>b.localeCompare(a))) {
       const dp = groups[date];
       content += `<div class="timeline-date">${formatDate(dp[0].createdAt)}</div><div class="photos-grid">`;
       for (const photo of dp) {
-        const url = await getPhotoURL(photo);
-        const analysis = await DB.getAnalysisByPhoto(photo.id);
+        const { url, analysis } = photoMap[photo.id];
         let bc = photo.type==='analyzer'?'badge-analyzer':'badge-plant';
         let bt = photo.type==='analyzer'?'📊 Suelo':'🌿 Planta';
         if (!analysis && photo.type!=='analyzer') { bc='badge-pending'; bt='⏳ Pendiente'; }

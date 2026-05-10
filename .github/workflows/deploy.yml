@@ -9,12 +9,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via cPanel Git
+      - name: Pull latest from GitHub
         run: |
           curl -s "https://7ire.com:2083/execute/VersionControl/update" \
             -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
-            -d "repository=/home3/sevireco/public_html/gardenai"
+            --data-urlencode "repository=/home3/sevireco/public_html/gardenai" \
+            --data-urlencode "branch=main"
 
-          curl -s "https://7ire.com:2083/execute/VersionControl/retrieve_deploy_status" \
+      - name: Wait for pull
+        run: sleep 5
+
+      - name: Deploy HEAD commit
+        run: |
+          curl -s "https://7ire.com:2083/execute/VersionControl/create_deployment" \
             -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
-            -d "repository=/home3/sevireco/public_html/gardenai"
+            --data-urlencode "repository=/home3/sevireco/public_html/gardenai"

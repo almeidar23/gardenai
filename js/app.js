@@ -29,6 +29,7 @@ function applyTheme(theme) {
 const modalsEl = () => document.getElementById('modals');
 let currentRoute = '';
 let selectedPhotos = new Set();
+let photoSelectMode = false;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -147,8 +148,17 @@ function showLoading() {
 async function handleAction(action, target) {
   switch (action) {
     case 'enterSelectMode': {
-      const grid = document.getElementById('pots-grid') || document.querySelector('.photos-grid');
-      if (grid) grid.classList.toggle('select-mode');
+      photoSelectMode = !photoSelectMode;
+      const grid = document.querySelector('.photos-grid');
+      if (grid) grid.classList.toggle('select-mode', photoSelectMode);
+      const btn = document.getElementById('select-mode-btn');
+      if (btn) {
+        btn.style.background = photoSelectMode ? 'var(--accent-glow)' : '';
+        btn.style.borderColor = photoSelectMode ? 'var(--accent)' : '';
+        btn.style.color = photoSelectMode ? 'var(--accent)' : '';
+      }
+      if (!photoSelectMode) clearPhotoSelection();
+      showToast(photoSelectMode ? 'Toca fotos para seleccionar' : 'Selección desactivada');
       break;
     }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
@@ -871,11 +881,17 @@ function setupRegisterForm() {
 // ===== GLOBAL EVENT DELEGATION =====
 document.addEventListener('click', (e) => {
   const at = e.target.closest('[data-action]');
-  if (at) { 
+  if (at) {
     if (at.dataset.action === 'closeModal' && e.target !== at) return;
-    e.preventDefault(); 
-    handleAction(at.dataset.action, at); 
-    return; 
+    if (photoSelectMode && at.dataset.action === 'viewPhoto') {
+      e.preventDefault();
+      const pid = at.dataset.photoId;
+      if (pid) togglePhotoSelection(pid);
+      return;
+    }
+    e.preventDefault();
+    handleAction(at.dataset.action, at);
+    return;
   }
   const nt = e.target.closest('[data-navigate]');
   if (nt) { e.preventDefault(); showLoading(); navigate('#' + nt.dataset.navigate); return; }

@@ -785,11 +785,15 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   margin-bottom: 16px;
   touch-action: pan-y;
   user-select: none;
-  cursor: zoom-in;
+  cursor: default;
   background: var(--bg-secondary);
 }
 .zoom-wrapper.zoomed {
   touch-action: none;
+  cursor: grab;
+}
+.zoom-wrapper.zoomed:active {
+  cursor: grabbing;
 }
 
 .zoom-wrapper .photo-detail-img {

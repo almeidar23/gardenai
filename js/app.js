@@ -815,40 +815,31 @@ function initPhotoZoom() {
 
   wrapper.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
-      // Pinch to zoom — always capture
-      e.preventDefault();
       startDist = touchDist(e.touches);
       startScale = scale; startTx = tx; startTy = ty;
     } else if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastTap < 280) {
-        // Double tap: toggle zoom
-        e.preventDefault();
         apply(scale > 1 ? 1 : 2.5, 0, 0);
         lastTap = 0;
       } else {
         lastTap = now;
         if (scale > 1) {
-          // Zoomed in: start pan
           isPanning = true;
           panStartX = e.touches[0].clientX - tx;
           panStartY = e.touches[0].clientY - ty;
         }
-        // scale === 1: don't preventDefault — let page scroll naturally
       }
     }
-  }, { passive: false });
+  }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2) {
-      e.preventDefault();
       apply(startScale * touchDist(e.touches) / startDist, startTx, startTy);
     } else if (e.touches.length === 1 && isPanning) {
-      e.preventDefault();
       apply(scale, e.touches[0].clientX - panStartX, e.touches[0].clientY - panStartY);
     }
-    // scale === 1 and not panning: no preventDefault — page scrolls freely
-  }, { passive: false });
+  }, { passive: true });
 
   wrapper.addEventListener('touchend', () => { isPanning = false; });
 

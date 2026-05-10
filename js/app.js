@@ -140,8 +140,17 @@ function updateNav() {
 // ===== ACTIONS =====
 function closeModal() { modalsEl().innerHTML = ''; }
 
+function showLoading() {
+  mainEl().innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:40vh"><div class="spinner" style="width:32px;height:32px;border:3px solid var(--border-glass);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite"></div></div>';
+}
+
 async function handleAction(action, target) {
   switch (action) {
+    case 'enterSelectMode': {
+      const grid = document.getElementById('pots-grid') || document.querySelector('.photos-grid');
+      if (grid) grid.classList.toggle('select-mode');
+      break;
+    }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
     case 'editPot': { const pot = await DB.getPot(Number(target.dataset.potId)); modalsEl().innerHTML = renderPotModal(pot); setupPotForm(); break; }
     case 'deletePot': {
@@ -869,9 +878,15 @@ document.addEventListener('click', (e) => {
     return; 
   }
   const nt = e.target.closest('[data-navigate]');
-  if (nt) { e.preventDefault(); navigate('#' + nt.dataset.navigate); return; }
+  if (nt) { e.preventDefault(); showLoading(); navigate('#' + nt.dataset.navigate); return; }
   const ni = e.target.closest('[data-nav]');
-  if (ni) { e.preventDefault(); window.location.hash = '#'+ni.dataset.nav; }
+  if (ni) {
+    e.preventDefault();
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    ni.classList.add('active');
+    showLoading();
+    window.location.hash = '#' + ni.dataset.nav;
+  }
 });
 
 // ===== DYNAMIC UI EVENTS =====

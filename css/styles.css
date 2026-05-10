@@ -276,6 +276,18 @@ a { color: var(--accent); text-decoration: none; }
   gap: 8px;
 }
 
+.app-version {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 1;
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
 .header-back {
   margin-right: 12px;
   font-size: 1.2rem;

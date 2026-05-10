@@ -135,3 +135,33 @@ export async function blobToBase64(blob) {
   const dataUrl = await blobToDataURL(blob);
   return dataUrl.split(',')[1];
 }
+
+/**
+ * Compress image to a small base64 string suitable for AI API calls.
+ * Max 600px, quality 0.5 — keeps payload under 150KB for iOS compatibility.
+ * @param {Blob|string} blobOrDataUrl
+ * @returns {Promise<string>} base64 string without prefix
+ */
+export function compressForAI(blobOrDataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const isDataUrl = typeof blobOrDataUrl === 'string';
+    const url = isDataUrl ? blobOrDataUrl : URL.createObjectURL(blobOrDataUrl);
+    img.onload = () => {
+      if (!isDataUrl) URL.revokeObjectURL(url);
+      const MAX = 600;
+      let { naturalWidth: w, naturalHeight: h } = img;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      resolve(dataUrl.split(',')[1]);
+    };
+    img.onerror = () => { if (!isDataUrl) URL.revokeObjectURL(url); reject(new Error('Error compressing image')); };
+    img.src = url;
+  });
+}

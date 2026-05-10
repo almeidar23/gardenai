@@ -1,7 +1,7 @@
 // js/ai.js — Gemini API integration for GardenAI
 
 import DB from './db.js';
-import { blobToBase64 } from './camera.js';
+import { compressForAI } from './camera.js';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
@@ -126,7 +126,7 @@ async function callGroq(base64Image, prompt) {
  * @returns {Promise<object>} analysis result
  */
 export async function analyzePlant(imageBlob, soilData = null) {
-  const base64 = await blobToBase64(imageBlob);
+  const base64 = await compressForAI(imageBlob);
 
   let soilContext = '';
   if (soilData) {
@@ -187,7 +187,7 @@ Si no puedes identificar la planta con certeza, indica tu mejor estimación. Sé
  * @returns {Promise<object>} soil data with 6 parameters
  */
 export async function readAnalyzer(imageBlob) {
-  const base64 = await blobToBase64(imageBlob);
+  const base64 = await compressForAI(imageBlob);
 
   const prompt = `Eres un sistema OCR especializado en leer medidores/analizadores de suelo para jardinería. Esta foto muestra un analizador de suelo con una pantalla o indicadores que muestran valores.
 
@@ -225,7 +225,8 @@ Sé preciso al leer los números de la pantalla/indicadores.`;
 /**
  * Vision call WITHOUT forced JSON mode — used for simple classification.
  */
-async function callVisionFree(base64Image, prompt) {
+async function callVisionFree(blobOrDataUrl, prompt) {
+  const base64Image = await compressForAI(blobOrDataUrl);
   const provider = await DB.getSetting('aiProvider') || 'groq';
   const apiKey = await getApiKey(provider);
 
@@ -273,10 +274,9 @@ async function callVisionFree(base64Image, prompt) {
  * @returns {Promise<'analyzer'|'plant'>}
  */
 export async function detectPhotoType(imageBlob) {
-  const base64 = await blobToBase64(imageBlob);
   const prompt = `Look at this image. Does it show a handheld soil meter or soil analyzer device with a digital display showing numerical readings (humidity, pH, fertility, temperature)? Answer with only one word: YES or NO.`;
   try {
-    const text = await callVisionFree(base64, prompt);
+    const text = await callVisionFree(imageBlob, prompt);
     return text.trim().toUpperCase().startsWith('YES') ? 'analyzer' : 'plant';
   } catch {
     return 'plant';

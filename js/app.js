@@ -473,7 +473,7 @@ async function savePhoto(potId, blob) {
 async function runAnalysis(photoId, originalBlob = null) {
   const photo = await DB.getPhoto(photoId);
   if (!photo) return;
-  const blobForAI = originalBlob || photo.blob;
+  const blobForAI = originalBlob || photo.imageData || photo.blob;
   const btn = document.getElementById('analyze-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border:2px solid var(--border-glass);border-top-color:var(--bg-primary);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div> Analizando...'; }
   try {

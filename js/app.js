@@ -327,6 +327,14 @@ async function handleAction(action, target) {
       break;
     }
     case 'analyzePhoto': { await runAnalysis(Number(target.dataset.photoId)); break; }
+    case 'switchPhotoType': {
+      const pid = Number(target.dataset.photoId);
+      const newType = target.dataset.newType;
+      const photoToUpdate = await DB.getPhoto(pid);
+      if (photoToUpdate) await DB.updatePhoto({ ...photoToUpdate, type: newType });
+      await runAnalysis(pid);
+      break;
+    }
     case 'deletePhoto': {
       if (confirm('¿Eliminar esta foto?')) {
         const p = await DB.getPhoto(Number(target.dataset.photoId));

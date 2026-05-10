@@ -202,10 +202,14 @@ export async function renderPhotoDetail(photoId) {
   const url = await getPhotoURL(photo);
   const analysis = await DB.getAnalysisByPhoto(photo.id);
   let analysisHtml = '';
+  const switchType = photo.type === 'analyzer' ? 'plant' : 'analyzer';
+  const switchLabel = photo.type === 'analyzer' ? '🌿 Cambiar a Planta' : '📊 Cambiar a Analizador';
+  const analyzeLabel = photo.type === 'analyzer' ? 'Medidor' : 'Planta';
+  const reanalyzeBtns = `<div class="btn-group" style="margin-top:12px"><button class="btn btn-primary btn-block" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">🔄 Re-analizar ${analyzeLabel}</button><button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photo.id}" data-new-type="${switchType}">${switchLabel} y re-analizar</button></div>`;
   if (analysis && analysis.result) {
-    analysisHtml = photo.type==='analyzer' ? renderSoilAnalysis(analysis.result) : renderPlantAnalysis(analysis.result);
+    analysisHtml = (photo.type==='analyzer' ? renderSoilAnalysis(analysis.result) : renderPlantAnalysis(analysis.result)) + reanalyzeBtns;
   } else {
-    analysisHtml = `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis IA</h3></div><div class="btn-group"><button class="btn btn-primary btn-block" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">✨ Analizar ${photo.type==='analyzer'?'Medidor':'Planta'}</button></div></div>`;
+    analysisHtml = `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis IA</h3></div><div class="btn-group"><button class="btn btn-primary btn-block" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">✨ Analizar ${analyzeLabel}</button><button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photo.id}" data-new-type="${switchType}">${switchLabel} y analizar</button></div></div>`;
   }
   
   const navHtml = `

@@ -9,20 +9,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Deploy via cPanel Git
+        run: |
+          curl -s "https://7ire.com:2083/execute/VersionControl/update" \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
+            -d "repository=/home3/sevireco/public_html/gardenai"
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: public_html/gardenai/
-          dangerous-clean-slate: true
-          timeout: 60000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/CLAUDE.md
-            **/.ftp-deploy-sync-state.json
+          curl -s "https://7ire.com:2083/execute/VersionControl/retrieve_deploy_status" \
+            -H "Authorization: cpanel ${{ secrets.CPANEL_USERNAME }}:${{ secrets.CPANEL_TOKEN }}" \
+            -d "repository=/home3/sevireco/public_html/gardenai"

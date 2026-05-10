@@ -783,10 +783,13 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   overflow: hidden;
   border-radius: var(--radius-lg);
   margin-bottom: 16px;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   cursor: zoom-in;
   background: var(--bg-secondary);
+}
+.zoom-wrapper.zoomed {
+  touch-action: none;
 }
 
 .zoom-wrapper .photo-detail-img {

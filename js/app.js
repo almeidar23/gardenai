@@ -810,6 +810,7 @@ function initPhotoZoom() {
     tx = c.x; ty = c.y;
     img.style.transform = `scale(${scale}) translate(${tx / scale}px, ${ty / scale}px)`;
     wrapper.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+    wrapper.classList.toggle('zoomed', scale > 1);
   }
 
   wrapper.addEventListener('touchstart', (e) => {

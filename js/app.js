@@ -35,11 +35,10 @@ let potSelectMode = false;
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
   const thumb = document.getElementById(`photo-${id}`);
-  const check = thumb?.querySelector('.photo-select-check');
   if (selectedPhotos.has(id)) {
-    selectedPhotos.delete(id); thumb?.classList.remove('selected'); check?.classList.remove('checked');
+    selectedPhotos.delete(id); thumb?.classList.remove('selected');
   } else {
-    selectedPhotos.add(id); thumb?.classList.add('selected'); check?.classList.add('checked');
+    selectedPhotos.add(id); thumb?.classList.add('selected');
   }
   if (selectedPhotos.size > 0) updateBulkBar();
   else document.getElementById('bulk-action-bar')?.remove();
@@ -47,10 +46,7 @@ function togglePhotoSelection(photoId) {
 
 function clearPhotoSelection() {
   selectedPhotos.clear();
-  document.querySelectorAll('.photo-thumb.selected').forEach(el => {
-    el.classList.remove('selected');
-    el.querySelector('.photo-select-check')?.classList.remove('checked');
-  });
+  document.querySelectorAll('.photo-thumb.selected').forEach(el => el.classList.remove('selected'));
   document.getElementById('bulk-action-bar')?.remove();
 }
 
@@ -156,9 +152,14 @@ async function handleAction(action, target) {
       const grid = document.querySelector('.photos-grid');
       if (grid) grid.classList.toggle('select-mode', photoSelectMode);
       const btn = document.getElementById('select-mode-btn');
-      if (btn) btn.textContent = photoSelectMode ? '🟢' : '✅';
+      if (btn) {
+        btn.classList.toggle('select-active', photoSelectMode);
+        btn.innerHTML = photoSelectMode
+          ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+          : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      }
       if (!photoSelectMode) clearPhotoSelection();
-      showToast(photoSelectMode ? 'Toca fotos para seleccionar' : 'Selección desactivada');
+      showToast(photoSelectMode ? 'Modo selección activado' : 'Selección desactivada');
       break;
     }
     case 'enterPotSelectMode': {

@@ -770,50 +770,56 @@ function updatePotBulkBar() {
     </div>`;
 }
 
-// ===== PHOTO ZOOM =====
+// ===== PHOTO ZOOM (fullscreen overlay) =====
 function initPhotoZoom() {
   const img = document.querySelector('.photo-detail-img');
   if (!img) return;
 
-  const wrapper = document.createElement('div');
-  wrapper.className = 'zoom-wrapper';
-  img.parentNode.insertBefore(wrapper, img);
-  wrapper.appendChild(img);
+  img.style.cursor = 'zoom-in';
+  img.addEventListener('click', () => openPhotoFullscreen(img.src));
+}
 
-  const hint = document.createElement('div');
-  hint.className = 'zoom-hint';
-  hint.textContent = '🔍 Pellizca o usa la rueda para hacer zoom · Doble tap para ampliar';
-  wrapper.parentNode.insertBefore(hint, wrapper.nextSibling);
+function openPhotoFullscreen(src) {
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-fullscreen';
 
+  const imgEl = document.createElement('img');
+  imgEl.src = src;
+  imgEl.className = 'photo-fullscreen-img';
+  overlay.appendChild(imgEl);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'photo-fullscreen-close';
+  closeBtn.textContent = '✕';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  overlay.appendChild(closeBtn);
+
+  document.body.appendChild(overlay);
+
+  // Zoom/pan state
   let scale = 1, tx = 0, ty = 0;
   let startScale = 1, startTx = 0, startTy = 0, startDist = 0;
   let isPanning = false, panStartX = 0, panStartY = 0;
   let lastTap = 0;
 
-  function touchDist(touches) {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  function clamp(s, x, y) {
-    if (s <= 1) return { x: 0, y: 0 };
-    const rect = wrapper.getBoundingClientRect();
-    const maxX = (rect.width * (s - 1)) / 2;
-    const maxY = (rect.height * (s - 1)) / 2;
-    return { x: Math.max(-maxX, Math.min(maxX, x)), y: Math.max(-maxY, Math.min(maxY, y)) };
+  function touchDist(t) {
+    const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx*dx + dy*dy);
   }
 
   function apply(s, x, y) {
     scale = Math.min(5, Math.max(1, s));
-    const c = clamp(scale, x, y);
-    tx = c.x; ty = c.y;
-    img.style.transform = `scale(${scale}) translate(${tx / scale}px, ${ty / scale}px)`;
-    wrapper.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
-    wrapper.classList.toggle('zoomed', scale > 1);
+    if (scale <= 1) { tx = 0; ty = 0; }
+    else {
+      const maxX = (overlay.clientWidth * (scale - 1)) / 2;
+      const maxY = (overlay.clientHeight * (scale - 1)) / 2;
+      tx = Math.max(-maxX, Math.min(maxX, x));
+      ty = Math.max(-maxY, Math.min(maxY, y));
+    }
+    imgEl.style.transform = `scale(${scale}) translate(${tx/scale}px, ${ty/scale}px)`;
   }
 
-  wrapper.addEventListener('touchstart', (e) => {
+  overlay.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       startDist = touchDist(e.touches);
       startScale = scale; startTx = tx; startTy = ty;
@@ -831,40 +837,30 @@ function initPhotoZoom() {
         }
       }
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  wrapper.addEventListener('touchmove', (e) => {
+  overlay.addEventListener('touchmove', (e) => {
+    e.preventDefault();
     if (e.touches.length === 2) {
       apply(startScale * touchDist(e.touches) / startDist, startTx, startTy);
     } else if (e.touches.length === 1 && isPanning) {
       apply(scale, e.touches[0].clientX - panStartX, e.touches[0].clientY - panStartY);
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  wrapper.addEventListener('touchend', () => { isPanning = false; });
+  overlay.addEventListener('touchend', () => { isPanning = false; });
 
-  wrapper.addEventListener('wheel', (e) => {
+  overlay.addEventListener('wheel', (e) => {
     e.preventDefault();
     apply(scale * (e.deltaY > 0 ? 0.85 : 1.18), tx, ty);
   }, { passive: false });
 
-  wrapper.addEventListener('mousedown', (e) => {
-    if (scale > 1) {
-      isPanning = true;
-      panStartX = e.clientX - tx;
-      panStartY = e.clientY - ty;
-      wrapper.style.cursor = 'grabbing';
-    }
+  overlay.addEventListener('mousedown', (e) => {
+    if (e.target === closeBtn) return;
+    if (scale > 1) { isPanning = true; panStartX = e.clientX - tx; panStartY = e.clientY - ty; }
   });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isPanning) return;
-    apply(scale, e.clientX - panStartX, e.clientY - panStartY);
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (isPanning) { isPanning = false; wrapper.style.cursor = scale > 1 ? 'grab' : 'zoom-in'; }
-  });
+  window.addEventListener('mousemove', (e) => { if (isPanning) apply(scale, e.clientX - panStartX, e.clientY - panStartY); });
+  window.addEventListener('mouseup', () => { isPanning = false; });
 }
 
 function setupEmailLoginForm() {

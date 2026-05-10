@@ -779,31 +779,44 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 }
 
 /* ===== PHOTO DETAIL ===== */
-.zoom-wrapper {
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  margin-bottom: 16px;
-  touch-action: pan-y;
-  user-select: none;
-  cursor: default;
-  background: var(--bg-secondary);
-}
-.zoom-wrapper.zoomed {
+.photo-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   touch-action: none;
-  cursor: grab;
-}
-.zoom-wrapper.zoomed:active {
-  cursor: grabbing;
+  user-select: none;
 }
 
-.zoom-wrapper .photo-detail-img {
-  width: 100%;
-  display: block;
-  border-radius: 0;
-  margin-bottom: 0;
+.photo-fullscreen-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
   transform-origin: center center;
   will-change: transform;
   pointer-events: none;
+  display: block;
+}
+
+.photo-fullscreen-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  z-index: 1001;
 }
 
 .photo-detail-img {

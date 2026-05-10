@@ -330,7 +330,6 @@ export function renderPhotoSourceModal(potId, photoType) {
   const label = photoType === 'analyzer' ? 'Analizador de suelo' : 'Planta';
   return `<div class="modal-overlay" data-action="closeModal" id="photo-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📷 ${label}</div><div class="flex flex-col gap-8" style="margin-top:8px"><button class="btn btn-secondary btn-block" data-action="capturePhoto" data-pot-id="${potId}" data-photo-type="${photoType}" id="capture-btn">📸 Tomar Foto</button><button class="btn btn-secondary btn-block" data-action="uploadPhoto" data-pot-id="${potId}" data-photo-type="${photoType}" id="upload-btn">🖼️ Subir desde el dispositivo</button></div></div></div>`;
 }
-}
 
 export async function renderEditPhotoModal(photoId) {
   const photo = await DB.getPhoto(Number(photoId));

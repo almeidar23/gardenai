@@ -128,7 +128,11 @@ async function navigate(hash) {
   if (stale()) { _navigating = false; return; }
 
   currentRoute = newRoute;
-  if (headerHtml) document.getElementById('header-title').innerHTML = headerHtml;
+  if (headerHtml) {
+    document.getElementById('header-title').innerHTML = headerHtml;
+  } else {
+    document.getElementById('header-title').innerHTML = '';
+  }
   mainEl().innerHTML = html;
   if (hash.startsWith('#pot/') && hash.includes('/photo/')) initPhotoZoom();
   if (window.location.hash !== hash) history.pushState(null, '', hash);
@@ -146,10 +150,6 @@ function updateNav() {
       (t==='settings' && (currentRoute==='settings'||currentRoute==='products'||currentRoute==='product'))
     );
   });
-  const title = document.getElementById('header-title');
-  if (currentRoute==='home') title.innerHTML = '<span class="logo-icon">🌱</span> GardenAI';
-  else if (currentRoute==='tasks') title.innerHTML = '<span class="logo-icon">📋</span> Tareas';
-  else if (currentRoute==='settings') title.innerHTML = '<button class="header-back" data-action="back">←</button> Configuración';
 }
 
 // ===== ACTIONS =====

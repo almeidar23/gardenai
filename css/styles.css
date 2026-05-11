@@ -252,7 +252,9 @@ a { color: var(--accent); text-decoration: none; }
   min-height: var(--header-height);
   display: flex;
   align-items: center;
-  padding: 8px 20px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
   padding-top: calc(env(safe-area-inset-top) + 8px);
   background: rgba(10, 15, 13, 0.85);
   backdrop-filter: blur(20px);
@@ -260,15 +262,47 @@ a { color: var(--accent); text-decoration: none; }
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.app-header h1 {
-  font-size: 1.35rem;
+.header-logo {
+  font-size: 1.2rem;
   font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: var(--transition);
+  flex-shrink: 0;
 }
 
-.app-header h1 .logo-icon { font-size: 1.65rem; }
+.header-logo:hover {
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.header-logo .logo-icon {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.header-logo .logo-text {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .header-logo .logo-text {
+    display: inline;
+  }
+}
+
+.header-title {
+  flex: 1;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
 .header-actions {
   margin-left: auto;

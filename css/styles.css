@@ -437,13 +437,24 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 600;
 }
 
+.pot-top-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+}
+
 .pot-card .pot-plant-type {
   font-size: 0.65rem;
   color: var(--accent);
   font-style: italic;
   margin-top: -2px;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -454,9 +465,6 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 .pot-card .pot-status {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   font-size: 0.6rem;
   padding: 2px 7px;
   border-radius: 20px;

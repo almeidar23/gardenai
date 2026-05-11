@@ -966,12 +966,47 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* ===== TASK CARDS ===== */
 .task-pot-card {
+  position: relative;
   margin-bottom: 14px;
   animation: slideUp 0.4s ease backwards;
 }
 
 .task-pot-card:hover {
   transform: none;
+}
+
+.task-pot-card.pot-selected {
+  outline: 4px solid var(--accent);
+  outline-offset: 2px;
+  background: var(--accent-glow);
+}
+
+.pot-select-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.pot-select-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  content: '✓';
+}
+
+.pot-select-check.checked::after {
+  content: '✓';
+  color: white;
+  font-weight: bold;
 }
 
 .task-pot-header {

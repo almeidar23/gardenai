@@ -201,7 +201,11 @@ async function handleAction(action, target) {
     case 'bulkApplyProduct': {
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
-      modalsEl().innerHTML = renderBulkApplyProductModal(products, selectedPotsTask.size);
+      console.log('bulkApplyProduct triggered, products:', products.length);
+      const modalHtml = renderBulkApplyProductModal(products, selectedPotsTask.size);
+      console.log('Modal HTML:', modalHtml.substring(0, 100));
+      modalsEl().innerHTML = modalHtml;
+      console.log('Modal rendered, modalsEl:', modalsEl().innerHTML.substring(0, 100));
       break;
     }
     case 'confirmBulkApplyProduct': {

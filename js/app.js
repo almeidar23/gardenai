@@ -787,13 +787,16 @@ async function exportAllData() {
 // ===== TASK POT SELECTION =====
 function toggleTaskPotSelection(potId) {
   const id = String(potId);
-  const checkbox = document.querySelector(`input.task-pot-checkbox[data-pot-id="${id}"]`);
+  const card = document.querySelector(`[data-toggle-select="task"][data-pot-id="${id}"]`);
+  const check = card?.querySelector('.pot-select-check');
   if (selectedPotsTask.has(id)) {
     selectedPotsTask.delete(id);
-    if (checkbox) checkbox.checked = false;
+    card?.classList.remove('pot-selected');
+    if (check) check.classList.remove('checked');
   } else {
     selectedPotsTask.add(id);
-    if (checkbox) checkbox.checked = true;
+    card?.classList.add('pot-selected');
+    if (check) check.classList.add('checked');
   }
   if (selectedPotsTask.size > 0) updateTaskBulkBar();
   else document.getElementById('task-bulk-bar')?.remove();
@@ -801,7 +804,10 @@ function toggleTaskPotSelection(potId) {
 
 function clearTaskPotSelection() {
   selectedPotsTask.clear();
-  document.querySelectorAll('input.task-pot-checkbox').forEach(el => el.checked = false);
+  document.querySelectorAll('[data-toggle-select="task"].pot-selected').forEach(el => {
+    el.classList.remove('pot-selected');
+    el.querySelector('.pot-select-check')?.classList.remove('checked');
+  });
   document.getElementById('task-bulk-bar')?.remove();
 }
 
@@ -809,7 +815,6 @@ function updateTaskBulkBar() {
   let bar = document.getElementById('task-bulk-bar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'task-bulk-bar'; bar.className = 'bulk-action-bar'; document.body.appendChild(bar); }
   const n = selectedPotsTask.size;
-  const products = [...new Set(document.querySelectorAll('.task-icon'))].slice(0, 5);
   bar.innerHTML = `
     <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
     <div class="bulk-actions">
@@ -987,6 +992,14 @@ function setupRegisterForm() {
 
 // ===== GLOBAL EVENT DELEGATION =====
 document.addEventListener('click', (e) => {
+  const ts = e.target.closest('[data-toggle-select="task"]');
+  if (ts && taskSelectMode && !e.target.closest('[data-action]')) {
+    e.preventDefault();
+    const potId = ts.dataset.potId;
+    if (potId) toggleTaskPotSelection(potId);
+    return;
+  }
+
   const at = e.target.closest('[data-action]');
   if (at) {
     if (at.dataset.action === 'closeModal' && e.target !== at) return;
@@ -1025,13 +1038,6 @@ document.addEventListener('click', (e) => {
 
 // ===== DYNAMIC UI EVENTS =====
 document.addEventListener('change', (e) => {
-  if (e.target.classList.contains('task-pot-checkbox')) {
-    const potId = e.target.dataset.potId;
-    if (e.target.checked) selectedPotsTask.add(potId);
-    else selectedPotsTask.delete(potId);
-    if (selectedPotsTask.size > 0) updateTaskBulkBar();
-    else document.getElementById('task-bulk-bar')?.remove();
-  }
   if (e.target.id === 'ai-provider') {
     const val = e.target.value;
     const gSet = document.getElementById('gemini-settings');

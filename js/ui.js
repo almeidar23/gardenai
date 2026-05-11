@@ -355,8 +355,7 @@ export async function renderTasks() {
       rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><span class="task-status-badge status-${ts.status}">${escapeHtml(ts.label)}</span><button class="btn-apply" data-action="applyProduct" data-pot-id="${pot.id}" data-product-slug="${escapeHtml(prod.slug)}">✅</button></div>`;
     }
 
-    const checkmark = `<input type="checkbox" class="task-pot-checkbox" data-pot-id="${pot.id}" style="width:18px;height:18px;cursor:pointer">`;
-    html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" style="animation-delay:${i*0.06}s"><div class="task-pot-header">${checkmark}<span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span><button class="btn-icon" data-action="editPotProducts" data-pot-id="${pot.id}" style="margin-left:auto;padding:4px;opacity:0.7">⚙️</button></div>${rows}</div>`;
+    html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check" style="position:absolute;top:10px;right:10px;opacity:0"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span><button class="btn-icon" data-action="editPotProducts" data-pot-id="${pot.id}" style="margin-left:auto;padding:4px;opacity:0.7" onclick="event.stopPropagation()">⚙️</button></div>${rows}</div>`;
   }
 
   return header + html;

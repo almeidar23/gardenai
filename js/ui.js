@@ -15,7 +15,7 @@ function formatDateShort(iso) {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function dateKey(iso) { return new Date(iso).toISOString().slice(0, 10); }
-function escapeHtml(s) {
+export function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }

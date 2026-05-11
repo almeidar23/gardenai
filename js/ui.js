@@ -147,10 +147,25 @@ export async function renderPot(potId) {
         if (r.temperature && r.temperature !== 'N/A') summaryHtml += `<div style="background:var(--bg-secondary);padding:6px 12px;border-radius:12px;border:1px solid var(--border-glass)"><strong>🌡️ Temp:</strong> ${escapeHtml(r.temperature)}</div>`;
       }
       summaryHtml += `</div>`;
-      if (uniqueIssues.length > 0) {
-        summaryHtml += `<div style="margin-top:12px;font-size:0.8rem;background:rgba(255,100,100,0.1);padding:8px;border-radius:8px;border:1px solid rgba(255,100,100,0.2)"><strong>🚨 Problemas Detectados:</strong><ul style="margin:4px 0 0 16px;padding:0">`;
-        for (const issue of uniqueIssues) { summaryHtml += `<li style="margin-bottom:2px">${escapeHtml(issue.name||issue.type)} <em style="opacity:0.7">(${escapeHtml(issue.severity)})</em></li>`; }
-        summaryHtml += `</ul></div>`;
+
+      const recommendedProducts = mapIssuesToProducts(uniqueIssues, latestSoil?.result);
+
+      if (uniqueIssues.length > 0 || recommendedProducts.length > 0) {
+        summaryHtml += `<div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">`;
+
+        if (uniqueIssues.length > 0) {
+          summaryHtml += `<div style="font-size:0.8rem;background:rgba(255,100,100,0.1);padding:8px;border-radius:8px;border:1px solid rgba(255,100,100,0.2)"><strong>🚨 Problemas:</strong><ul style="margin:4px 0 0 16px;padding:0;font-size:0.75rem">`;
+          for (const issue of uniqueIssues) { summaryHtml += `<li style="margin-bottom:2px">${escapeHtml(issue.name||issue.type)}<br><em style="opacity:0.6;font-size:0.7rem">${escapeHtml(issue.severity)}</em></li>`; }
+          summaryHtml += `</ul></div>`;
+        }
+
+        if (recommendedProducts.length > 0) {
+          summaryHtml += `<div style="font-size:0.8rem;background:rgba(100,200,100,0.1);padding:8px;border-radius:8px;border:1px solid rgba(100,200,100,0.2)"><strong>✅ Recomendado:</strong><ul style="margin:4px 0 0 16px;padding:0;font-size:0.75rem">`;
+          for (const prod of recommendedProducts) { summaryHtml += `<li style="margin-bottom:4px;cursor:pointer" data-action="applyProduct" data-pot-id="${pot.id}" data-product-slug="${escapeHtml(prod.slug)}">${escapeHtml(prod.icon)} ${escapeHtml(prod.name)}</li>`; }
+          summaryHtml += `</ul></div>`;
+        }
+
+        summaryHtml += `</div>`;
       }
       summaryHtml += `</div>`;
     }
@@ -250,6 +265,51 @@ function renderSoilAnalysis(r) {
   for (const p of params) { const v=r[p.key]??'N/A'; ph+=`<div class="soil-param"><div class="param-label">${escapeHtml(p.icon)} ${escapeHtml(p.label)}</div><div class="param-value">${escapeHtml(v)}</div>${p.unit?`<div class="param-unit">${escapeHtml(p.unit)}</div>`:''}</div>`; }
   ph += '</div>';
   return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">📊</span><h3>Datos del Suelo</h3></div>${ph}${r.confidence?`<div class="mt-8" style="font-size:0.75rem;color:var(--text-muted)">Confianza: ${escapeHtml(r.confidence)}</div>`:''}${r.notes?`<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">${escapeHtml(r.notes)}</div>`:''}</div>`;
+}
+
+function mapIssuesToProducts(issues, soilData) {
+  const recommendations = new Map();
+  const keywordMap = {
+    water: { keywords: ['agua', 'seca', 'riego', 'humedad baja', 'sequedad'], slug: 'water', name: 'Agua', icon: '💧' },
+    fertilizer: { keywords: ['fertilidad', 'nutriente', 'nitrógeno', 'fósforo', 'carencia', 'deficiencia nutri'], slug: 'fertilizer', name: 'Abono', icon: '🧪' },
+    potassium: { keywords: ['potasio', 'deficiencia de potasio'], slug: 'potassium', name: 'Potasio', icon: '🟡' },
+    sulfur: { keywords: ['hongo', 'enfermedad', 'moho', 'mildiu', 'oidio'], slug: 'sulfur', name: 'Azufre', icon: '🟠' },
+    copper: { keywords: ['plaga', 'insecto', 'ácaros', 'cochinilla', 'escama'], slug: 'copper', name: 'Cobre', icon: '🔶' },
+    acid: { keywords: ['ph bajo', 'ácido', 'acidez'], slug: 'acid', name: 'Ácido Cítrico', icon: '⚗️' }
+  };
+
+  if (issues && issues.length > 0) {
+    for (const issue of issues) {
+      const text = (issue.name + ' ' + (issue.description || '')).toLowerCase();
+      for (const [key, mapping] of Object.entries(keywordMap)) {
+        if (mapping.keywords.some(kw => text.includes(kw)) && !recommendations.has(mapping.slug)) {
+          recommendations.set(mapping.slug, mapping);
+          break;
+        }
+      }
+    }
+  }
+
+  if (soilData) {
+    if (soilData.humidity && soilData.humidity !== 'N/A' && Number(soilData.humidity) < 30) {
+      if (!recommendations.has('water')) {
+        recommendations.set('water', { slug: 'water', name: 'Agua', icon: '💧' });
+      }
+    }
+    if (soilData.ph && soilData.ph !== 'N/A') {
+      const ph = Number(soilData.ph);
+      if (ph < 6 && !recommendations.has('acid')) {
+        recommendations.set('acid', { slug: 'acid', name: 'Ácido Cítrico', icon: '⚗️' });
+      }
+    }
+    if (soilData.fertility && soilData.fertility !== 'N/A' && Number(soilData.fertility) < 300) {
+      if (!recommendations.has('fertilizer')) {
+        recommendations.set('fertilizer', { slug: 'fertilizer', name: 'Abono', icon: '🧪' });
+      }
+    }
+  }
+
+  return Array.from(recommendations.values());
 }
 
 function computeTaskStatus(pot, product, allLogs) {

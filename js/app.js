@@ -229,6 +229,18 @@ async function handleAction(action, target) {
       mainEl().innerHTML = await renderTasks();
       break;
     }
+    case 'removeProductFromPot': {
+      const potId = Number(target.dataset.potId);
+      const productSlug = target.dataset.productSlug;
+      const pot = await DB.getPot(potId);
+      if (pot.activeProducts) {
+        pot.activeProducts = pot.activeProducts.filter(s => s !== productSlug);
+        await DB.updatePot(pot);
+        showToast('Producto removido ✓');
+        mainEl().innerHTML = await renderTasks();
+      }
+      break;
+    }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
     case 'editPot': { const pot = await DB.getPot(Number(target.dataset.potId)); modalsEl().innerHTML = renderPotModal(pot); setupPotForm(); break; }
     case 'deletePot': {

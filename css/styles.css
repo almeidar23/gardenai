@@ -1051,6 +1051,34 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   min-width: 0;
 }
 
+.task-row-actions {
+  display: none;
+  gap: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.task-row:hover .task-row-actions {
+  display: flex;
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.btn-icon-small:hover {
+  opacity: 1;
+  background: rgba(45, 212, 168, 0.1);
+  color: var(--accent);
+}
+
 .task-row .task-status-badge {
   font-size: 0.65rem;
   font-weight: 600;

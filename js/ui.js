@@ -328,24 +328,37 @@ function computeTaskStatus(pot, product, allLogs) {
 
 // ===== TASKS VIEW =====
 export async function renderTasks() {
-  const [pots, products] = await Promise.all([DB.getAllPots(), DB.getAllProducts()]);
+  const [pots, products, analyses] = await Promise.all([
+    DB.getAllPots(),
+    DB.getAllProducts(),
+    Promise.all((await DB.getAllPots()).map(p => DB.getAnalysesByPot(p.id)))
+  ]);
   products.sort((a, b) => a.name.localeCompare(b.name));
-  const header = `<div class="flex items-center justify-between" style="margin-bottom:4px">
-    <div class="section-title" style="margin-bottom:0">📋 Tareas</div>
-    <button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-navigate="products">🧴 Productos</button>
-  </div><div class="section-subtitle">Pendientes de tu jardín</div>`;
+
+  const header = `<div class="flex items-center justify-between mb-8"><div class="section-title" style="margin-bottom:0">📋 Tareas</div><div class="flex gap-8"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-navigate="products">🧴 Productos</button></div></div><div class="section-subtitle">Pendientes de tu jardín</div>`;
+
   if (pots.length === 0) return header + `<div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
+
   const allLogs = await DB.getTaskLogsByPots(pots.map(p => Number(p.id)));
   let html = '';
+
   for (let i = 0; i < pots.length; i++) {
     const pot = pots[i];
+    const potAnalyses = analyses[i] || [];
+    const recommended = mapIssuesToProducts(potAnalyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
+    const activeProductSlugs = pot.activeProducts || recommended.map(p => p.slug);
+    const activeProducts = products.filter(p => activeProductSlugs.includes(p.slug));
+
     let rows = '';
-    for (const prod of products) {
+    for (const prod of activeProducts) {
       const ts = computeTaskStatus(pot, prod, allLogs);
       rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><span class="task-status-badge status-${ts.status}">${escapeHtml(ts.label)}</span><button class="btn-apply" data-action="applyProduct" data-pot-id="${pot.id}" data-product-slug="${escapeHtml(prod.slug)}">✅</button></div>`;
     }
-    html += `<div class="glass-card task-pot-card" style="animation-delay:${i*0.06}s"><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
+
+    const checkmark = `<input type="checkbox" class="task-pot-checkbox" data-pot-id="${pot.id}" style="width:18px;height:18px;cursor:pointer">`;
+    html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" style="animation-delay:${i*0.06}s"><div class="task-pot-header">${checkmark}<span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span><button class="btn-icon" data-action="editPotProducts" data-pot-id="${pot.id}" style="margin-left:auto;padding:4px;opacity:0.7">⚙️</button></div>${rows}</div>`;
   }
+
   return header + html;
 }
 
@@ -377,6 +390,27 @@ export async function renderProductDetail(slug) {
 }
 
 // ===== MODALS =====
+export async function renderEditPotProductsModal(potId) {
+  const pot = await DB.getPot(Number(potId));
+  const products = await DB.getAllProducts();
+  const activeProductSlugs = pot?.activeProducts || [];
+
+  let checkboxes = '';
+  for (const prod of products) {
+    const checked = activeProductSlugs.includes(prod.slug) ? 'checked' : '';
+    checkboxes += `<label style="display:flex;align-items:center;gap:8px;padding:10px;cursor:pointer"><input type="checkbox" class="product-checkbox" data-slug="${prod.slug}" ${checked}><span>${escapeHtml(prod.icon)} ${escapeHtml(prod.name)}</span></label>`;
+  }
+
+  return `<div class="modal-overlay" data-action="closeModal">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📋 Productos para ${escapeHtml(pot.name)}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:60vh;overflow-y:auto">${checkboxes}</div>
+      <button class="btn btn-primary btn-block" data-action="savePotProducts" data-pot-id="${potId}">✅ Guardar</button>
+    </div>
+  </div>`;
+}
+
 export function renderPotModal(pot = null) {
   const isEdit = !!pot;
   const emoji = pot?.emoji || POT_EMOJIS[Math.floor(Math.random()*POT_EMOJIS.length)];

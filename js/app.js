@@ -31,6 +31,8 @@ let currentRoute = '';
 let selectedPhotos = new Set();
 let photoSelectMode = false;
 let potSelectMode = false;
+let selectedPotsTask = new Set();
+let taskSelectMode = false;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -184,6 +186,55 @@ async function handleAction(action, target) {
       if (pbtn) pbtn.textContent = potSelectMode ? '🟢' : '✅';
       if (!potSelectMode) clearPotSelection();
       showToast(potSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
+      break;
+    }
+    case 'enterPotSelectModeTask': {
+      taskSelectMode = !taskSelectMode;
+      document.querySelectorAll('input.task-pot-checkbox').forEach(el => el.style.display = taskSelectMode ? 'block' : 'none');
+      const tbtn = document.getElementById('pot-select-task-btn');
+      if (tbtn) tbtn.textContent = taskSelectMode ? '🟢' : '✅';
+      if (!taskSelectMode) clearTaskPotSelection();
+      showToast(taskSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
+      break;
+    }
+    case 'clearTaskSelection': { clearTaskPotSelection(); break; }
+    case 'bulkApplyProduct': {
+      const products = await DB.getAllProducts();
+      products.sort((a, b) => a.name.localeCompare(b.name));
+      modalsEl().innerHTML = `<div class="modal-overlay" data-action="closeModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+          <div class="modal-handle"></div>
+          <div class="modal-title">📋 Aplicar a ${selectedPotsTask.size} maceta${selectedPotsTask.size!==1?'s':''}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+            ${products.map(p => `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${p.slug}">${escapeHtml(p.icon)} ${escapeHtml(p.name)}</button>`).join('')}
+          </div>
+        </div>
+      </div>`;
+      break;
+    }
+    case 'confirmBulkApplyProduct': {
+      const slug = target.dataset.productSlug;
+      const ids = [...selectedPotsTask];
+      for (const potId of ids) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
+      closeModal(); clearTaskPotSelection();
+      showToast(`✅ Aplicado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'editPotProducts': {
+      const potId = target.dataset.potId;
+      modalsEl().innerHTML = await renderEditPotProductsModal(potId);
+      break;
+    }
+    case 'savePotProducts': {
+      const potId = target.dataset.potId;
+      const pot = await DB.getPot(Number(potId));
+      const selected = [];
+      document.querySelectorAll('.product-checkbox:checked').forEach(cb => selected.push(cb.dataset.slug));
+      pot.activeProducts = selected;
+      await DB.updatePot(pot);
+      closeModal(); showToast('Productos guardados ✓');
+      mainEl().innerHTML = await renderTasks();
       break;
     }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
@@ -733,6 +784,40 @@ async function exportAllData() {
   } catch(e) { showToast('Error: '+e.message); }
 }
 
+// ===== TASK POT SELECTION =====
+function toggleTaskPotSelection(potId) {
+  const id = String(potId);
+  const checkbox = document.querySelector(`input.task-pot-checkbox[data-pot-id="${id}"]`);
+  if (selectedPotsTask.has(id)) {
+    selectedPotsTask.delete(id);
+    if (checkbox) checkbox.checked = false;
+  } else {
+    selectedPotsTask.add(id);
+    if (checkbox) checkbox.checked = true;
+  }
+  if (selectedPotsTask.size > 0) updateTaskBulkBar();
+  else document.getElementById('task-bulk-bar')?.remove();
+}
+
+function clearTaskPotSelection() {
+  selectedPotsTask.clear();
+  document.querySelectorAll('input.task-pot-checkbox').forEach(el => el.checked = false);
+  document.getElementById('task-bulk-bar')?.remove();
+}
+
+function updateTaskBulkBar() {
+  let bar = document.getElementById('task-bulk-bar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'task-bulk-bar'; bar.className = 'bulk-action-bar'; document.body.appendChild(bar); }
+  const n = selectedPotsTask.size;
+  const products = [...new Set(document.querySelectorAll('.task-icon'))].slice(0, 5);
+  bar.innerHTML = `
+    <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
+    <div class="bulk-actions">
+      <button class="bulk-btn" data-action="bulkApplyProduct">📋 Aplicar producto</button>
+      <button class="bulk-btn bulk-btn-cancel" data-action="clearTaskSelection">✕ Cancelar</button>
+    </div>`;
+}
+
 // ===== POT SELECTION (HOME) =====
 let selectedPots = new Set();
 
@@ -940,6 +1025,13 @@ document.addEventListener('click', (e) => {
 
 // ===== DYNAMIC UI EVENTS =====
 document.addEventListener('change', (e) => {
+  if (e.target.classList.contains('task-pot-checkbox')) {
+    const potId = e.target.dataset.potId;
+    if (e.target.checked) selectedPotsTask.add(potId);
+    else selectedPotsTask.delete(potId);
+    if (selectedPotsTask.size > 0) updateTaskBulkBar();
+    else document.getElementById('task-bulk-bar')?.remove();
+  }
   if (e.target.id === 'ai-provider') {
     const val = e.target.value;
     const gSet = document.getElementById('gemini-settings');

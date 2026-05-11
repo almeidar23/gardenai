@@ -644,6 +644,29 @@ export function renderBulkPotTaskModal(products, potCount) {
   </div>`;
 }
 
+export function renderBulkApplyProductModal(products, potCount) {
+  let list = '';
+  if (products.length === 0) {
+    list = `<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.85rem">No hay productos disponibles. <a href="#products" style="color:var(--accent)">Crear uno</a></div>`;
+  } else {
+    for (const p of products) {
+      list += `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
+        <span style="font-size:1.3rem">${escapeHtml(p.icon)}</span>
+        <span style="flex:1;text-align:left">${escapeHtml(p.name)}</span>
+        <span style="color:var(--text-muted);font-size:0.72rem">c/${escapeHtml(p.defaultFrequencyDays)} días</span>
+      </button>`;
+    }
+  }
+  return `<div class="modal-overlay" data-action="closeModal" id="bulk-apply-product-modal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📋 Aplicar producto</div>
+      <div class="section-subtitle">Selecciona un producto para aplicar a ${potCount} maceta${potCount!==1?'s':''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">${list}</div>
+    </div>
+  </div>`;
+}
+
 // ===== BULK MODALS =====
 export function renderBulkDateModal(count) {
   const today = new Date().toISOString().slice(0,10);

@@ -14,7 +14,7 @@ import {
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal,
   renderEditPhotoModal, renderPotScheduleModal, renderLogin,
   renderBulkDateModal, renderBulkNotesModal,
-  renderProductModal, renderBulkPotTaskModal,
+  renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL
 } from './ui.js';
@@ -201,15 +201,7 @@ async function handleAction(action, target) {
     case 'bulkApplyProduct': {
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
-      modalsEl().innerHTML = `<div class="modal-overlay" data-action="closeModal">
-        <div class="modal-content" onclick="event.stopPropagation()">
-          <div class="modal-handle"></div>
-          <div class="modal-title">📋 Aplicar a ${selectedPotsTask.size} maceta${selectedPotsTask.size!==1?'s':''}</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-            ${products.map(p => `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${p.slug}">${escapeHtml(p.icon)} ${escapeHtml(p.name)}</button>`).join('')}
-          </div>
-        </div>
-      </div>`;
+      modalsEl().innerHTML = renderBulkApplyProductModal(products, selectedPotsTask.size);
       break;
     }
     case 'confirmBulkApplyProduct': {

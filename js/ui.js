@@ -311,10 +311,13 @@ function mapIssuesToProducts(issues, soilData) {
   return Array.from(recommendations.values());
 }
 
-function computeTaskStatus(pot, product, allLogs) {
+function computeTaskStatus(pot, product, allLogs, isRecommended = false) {
   const freq = pot.scheduleOverrides?.[product.slug] || product.defaultFrequencyDays;
   const potLogs = allLogs.filter(l => l.potId === Number(pot.id) && l.productSlug === product.slug);
-  if (!potLogs.length) return { status: 'warning', label: 'Pendiente', freq };
+  if (!potLogs.length) {
+    const label = isRecommended ? 'Recomendado' : 'Pendiente';
+    return { status: 'warning', label, freq };
+  }
   const sorted = potLogs.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
   const last = sorted[0];
   const diffDays = Math.floor((new Date() - new Date(last.appliedAt)) / 86400000);
@@ -352,12 +355,14 @@ export async function renderTasks() {
     const pot = pots[i];
     const potAnalyses = analyses[i] || [];
     const recommended = mapIssuesToProducts(potAnalyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
-    const activeProductSlugs = (pot.activeProducts && pot.activeProducts.length > 0) ? pot.activeProducts : recommended.map(p => p.slug);
+    const recommendedSlugs = recommended.map(p => p.slug);
+    const activeProductSlugs = (pot.activeProducts && pot.activeProducts.length > 0) ? pot.activeProducts : recommendedSlugs;
     const activeProducts = products.filter(p => activeProductSlugs.includes(p.slug));
 
     let rows = '';
     for (const prod of activeProducts) {
-      const ts = computeTaskStatus(pot, prod, allLogs);
+      const isRecommended = recommendedSlugs.includes(prod.slug);
+      const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
       rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
     }
 

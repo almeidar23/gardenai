@@ -14,9 +14,9 @@ import {
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal,
   renderEditPhotoModal, renderPotScheduleModal, renderLogin,
   renderBulkDateModal, renderBulkNotesModal,
-  renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal,
+  renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
-  showToast, clearPhotoCache, getPhotoURL, escapeHtml
+  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -92,13 +92,15 @@ async function navigate(hash) {
 
   if (!hash || hash === '#' || hash === '#home') {
     newRoute = 'home';
+    headerHtml = '🪴 Mis Macetas';
     html = await renderHome();
   } else if (hash === '#tasks') {
     newRoute = 'tasks';
+    headerHtml = '📋 Tareas';
     html = await renderTasks();
   } else if (hash === '#products') {
     newRoute = 'products';
-    headerHtml = '<button class="header-back" data-action="back">←</button> Productos';
+    headerHtml = '<button class="header-back" data-action="back">←</button> 🧴 Productos';
     html = await renderProducts();
   } else if (hash.startsWith('#product/')) {
     newRoute = 'product';
@@ -123,6 +125,14 @@ async function navigate(hash) {
     }
   } else if (hash === '#settings') {
     newRoute = 'settings';
+    const currentThemeRaw = await DB.getSetting('theme');
+    const currentTheme = currentThemeRaw || 'dark';
+    headerHtml = `<div style="flex:1"><div style="font-size:0.9rem;font-weight:500">⚙️ Configuración</div><div style="font-size:0.75rem;color:var(--text-muted)">Ajustes de la aplicación</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='dark'?'1':'0.4'}" data-action="setTheme" data-theme="dark" title="Jardín Nocturno">🌙</button>
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='botanical'?'1':'0.4'}" data-action="setTheme" data-theme="botanical" title="Botanical">🌿</button>
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='tropical'?'1':'0.4'}" data-action="setTheme" data-theme="tropical" title="Jardín Vivo">🌺</button>
+      </div>`;
     html = await renderSettings();
   }
 
@@ -149,7 +159,9 @@ function updateNav() {
     el.classList.toggle('active',
       (t==='home' && currentRoute==='home') ||
       (t==='tasks' && currentRoute==='tasks') ||
-      (t==='settings' && (currentRoute==='settings'||currentRoute==='products'||currentRoute==='product'))
+      (t==='products' && (currentRoute==='products'||currentRoute==='product')) ||
+      (t==='settings' && currentRoute==='settings') ||
+      (t==='stats' && currentRoute==='stats')
     );
   });
 }
@@ -190,9 +202,11 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectModeTask': {
       taskSelectMode = !taskSelectMode;
-      document.querySelectorAll('input.task-pot-checkbox').forEach(el => el.style.display = taskSelectMode ? 'block' : 'none');
       const tbtn = document.getElementById('pot-select-task-btn');
-      if (tbtn) tbtn.textContent = taskSelectMode ? '🟢' : '✅';
+      if (tbtn) {
+        tbtn.textContent = taskSelectMode ? '✅' : '✅';
+        tbtn.classList.toggle('select-mode-active', taskSelectMode);
+      }
       if (!taskSelectMode) clearTaskPotSelection();
       showToast(taskSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
       break;
@@ -211,9 +225,32 @@ async function handleAction(action, target) {
     case 'confirmBulkApplyProduct': {
       const slug = target.dataset.productSlug;
       const ids = [...selectedPotsTask];
-      for (const potId of ids) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
+      const products = await DB.getAllProducts();
+
+      for (const potId of ids) {
+        const pot = await DB.getPot(Number(potId));
+        if (pot) {
+          if (!pot.activeProducts || pot.activeProducts.length === 0) {
+            const analyses = await DB.getAnalysesByPot(pot.id);
+            const issues = analyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []);
+            const recommended = issues.length > 0 ? issues.flatMap(issue => {
+              if (issue === 'pest') return ['fungicide', 'insecticide'];
+              if (issue === 'disease') return ['fungicide'];
+              if (issue === 'nutrient-deficiency') return ['fertilizer'];
+              if (issue === 'water-stress') return [];
+              return [];
+            }) : [];
+            pot.activeProducts = [...new Set([...recommended, slug])];
+          } else if (!pot.activeProducts.includes(slug)) {
+            pot.activeProducts.push(slug);
+          }
+          await DB.updatePot(pot);
+          await DB.deleteTaskLogsByProductAndPot(Number(potId), slug);
+        }
+      }
       closeModal(); clearTaskPotSelection();
-      showToast(`✅ Aplicado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      showToast(`✅ Producto agregado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      await new Promise(r => setTimeout(r, 500));
       mainEl().innerHTML = await renderTasks();
       break;
     }
@@ -413,6 +450,101 @@ async function handleAction(action, target) {
       mainEl().innerHTML = await renderTasks();
       break;
     }
+    case 'openProductMenu': {
+      const potId = target.dataset.potId, slug = target.dataset.productSlug;
+      modalsEl().innerHTML = await renderProductMenu(potId, slug);
+      break;
+    }
+    case 'changeProductDate': {
+      const potId = target.dataset.potId, slug = target.dataset.productSlug;
+      const allLogs = await DB.getTaskLogsByPot(Number(potId));
+      const logs = allLogs.filter(l => l.productSlug === slug);
+      const lastLog = logs.length > 0 ? logs.sort((a,b) => new Date(b.appliedAt) - new Date(a.appliedAt))[0] : null;
+      const lastDate = lastLog ? toInputDate(lastLog.appliedAt) : new Date().toISOString().slice(0, 10);
+      modalsEl().innerHTML = renderProductDateModal(potId, slug, lastDate);
+      setupProductDateCalendar();
+      break;
+    }
+    case 'saveProductDate': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      const selectedDate = document.getElementById('selected-date')?.value;
+      if (selectedDate) {
+        const date = new Date(selectedDate + 'T12:00:00');
+        await DB.addTaskLog({ potId, productSlug: slug, appliedAt: date.toISOString() });
+        closeModal();
+        showToast('✅ Fecha actualizada');
+        await new Promise(r => setTimeout(r, 500));
+        mainEl().innerHTML = await renderTasks();
+      }
+      break;
+    }
+    case 'markProductDone': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      console.log('markProductDone:', potId, slug);
+      const newLog = await DB.addTaskLog({ potId, productSlug: slug });
+      console.log('New log created:', newLog);
+      closeModal();
+      showToast('✅ Producto marcado como aplicado');
+      await new Promise(r => setTimeout(r, 500));
+      const allLogs = await DB.getTaskLogsByPot(potId);
+      console.log('All logs after add:', allLogs);
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'deleteProductFromPot': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      const pot = await DB.getPot(potId);
+      if (!pot) break;
+      pot.activeProducts = (pot.activeProducts || []).filter(s => s !== slug);
+      await DB.updatePot(pot);
+      await DB.deleteTaskLogsByProductAndPot(potId, slug);
+      closeModal();
+      showToast('🗑️ Producto eliminado');
+      await new Promise(r => setTimeout(r, 100));
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'selectCalendarDay': {
+      const dateStr = target.dataset.date;
+      const selectedInput = document.getElementById('selected-date');
+      if (selectedInput) selectedInput.value = dateStr;
+      document.querySelectorAll('.calendar-day').forEach(btn => {
+        const btnDate = btn.dataset.date;
+        if (btnDate === dateStr) {
+          btn.style.backgroundColor = 'var(--accent)';
+          btn.style.color = '#fff';
+          btn.style.fontWeight = '600';
+        } else {
+          btn.style.backgroundColor = 'transparent';
+          btn.style.color = 'var(--text-primary)';
+          btn.style.fontWeight = '400';
+        }
+      });
+      break;
+    }
+    case 'calendarPrevMonth':
+    case 'calendarNextMonth': {
+      const wrapper = document.querySelector('.calendar-wrapper');
+      if (!wrapper) break;
+      let year = parseInt(wrapper.dataset.year);
+      let month = parseInt(wrapper.dataset.month);
+      if (action === 'calendarNextMonth') {
+        month++;
+        if (month > 11) { month = 0; year++; }
+      } else {
+        month--;
+        if (month < 0) { month = 11; year--; }
+      }
+      const selectedDate = document.getElementById('selected-date')?.value || new Date().toISOString().slice(0, 10);
+      const { generateMonthlyCalendar } = await import('./ui.js');
+      wrapper.innerHTML = generateMonthlyCalendar(selectedDate);
+      wrapper.dataset.year = year;
+      wrapper.dataset.month = month;
+      break;
+    }
     case 'openPotSchedule': {
       modalsEl().innerHTML = await renderPotScheduleModal(target.dataset.potId);
       setupScheduleForm();
@@ -425,6 +557,7 @@ async function handleAction(action, target) {
       product.notes = document.getElementById('product-notes').value;
       await DB.updateProduct(product);
       showToast('Producto guardado ✓');
+      setTimeout(async () => { mainEl().innerHTML = await renderProductDetail(slug); }, 300);
       break;
     }
     case 'editProductModal': {
@@ -722,6 +855,39 @@ function setupScheduleForm() {
     pot.scheduleOverrides = overrides;
     await DB.updatePot(pot);
     closeModal(); showToast('Cronograma guardado ✓');
+  });
+}
+
+function setupProductDateCalendar() {
+  const wrapper = document.querySelector('.calendar-wrapper');
+  if (!wrapper) return;
+
+  wrapper.querySelectorAll('[data-action="selectCalendarDay"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const selectedDate = btn.dataset.date;
+      const selectedInput = document.getElementById('selected-date');
+      if (selectedInput) selectedInput.value = selectedDate;
+      wrapper.querySelectorAll('[data-action="selectCalendarDay"]').forEach(b => {
+        if (b.dataset.date === selectedDate) {
+          b.style.backgroundColor = 'var(--accent)';
+          b.style.color = '#fff';
+          b.style.fontWeight = '600';
+        } else {
+          b.style.backgroundColor = 'transparent';
+          b.style.color = 'var(--text-primary)';
+          b.style.fontWeight = '400';
+        }
+      });
+    });
+  });
+
+  wrapper.querySelectorAll('[data-action="calendarPrevMonth"], [data-action="calendarNextMonth"]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await handleAction(btn.dataset.action, btn);
+      setupProductDateCalendar();
+    });
   });
 }
 

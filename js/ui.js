@@ -706,6 +706,75 @@ export function renderBulkNotesModal(count) {
   return `<div class="modal-overlay" data-action="closeModal" id="bulk-notes-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📝 Agregar Notas</div><div class="section-subtitle">Se aplicará a ${count} foto${count!==1?'s':''} seleccionada${count!==1?'s':''}</div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="bulk-notes-input" placeholder="Tus observaciones..." style="min-height:100px"></textarea></div><button class="btn btn-primary btn-block" data-action="confirmBulkNotes" id="confirm-bulk-notes-btn">✅ Aplicar</button></div></div>`;
 }
 
+// ===== CALENDAR =====
+export function generateMonthlyCalendar(initialDate) {
+  const date = new Date(initialDate + 'T12:00:00');
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const selectedKey = initialDate;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  let html = `<div class="calendar-wrapper" data-year="${year}" data-month="${month}">`;
+  html += `<div class="calendar-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px">`;
+  html += `<button class="btn btn-sm" data-action="calendarPrevMonth" style="flex:0;padding:4px 8px;font-size:0.8rem">←</button>`;
+  html += `<div style="flex:1;text-align:center;font-weight:600">${monthNames[month]} ${year}</div>`;
+  html += `<button class="btn btn-sm" data-action="calendarNextMonth" style="flex:0;padding:4px 8px;font-size:0.8rem">→</button>`;
+  html += `</div>`;
+
+  html += `<div class="calendar-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px">`;
+  for (let i = 0; i < 7; i++) {
+    html += `<div style="text-align:center;font-size:0.75rem;font-weight:600;color:var(--text-muted);padding:4px">${dayNames[i]}</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="calendar-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">`;
+
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    html += `<div style="padding:8px"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(year, month, day);
+    const dayKey = dayDate.toISOString().slice(0, 10);
+    const isSelected = dayKey === selectedKey;
+    const isToday = dayKey === todayKey;
+    const bgColor = isSelected ? 'var(--accent)' : 'transparent';
+    const textColor = isSelected ? '#fff' : 'var(--text-primary)';
+    const decoration = isToday && !isSelected ? '2px solid var(--accent)' : 'none';
+
+    html += `<button class="calendar-day" data-action="selectCalendarDay" data-date="${dayKey}"
+      style="padding:8px;border-radius:4px;background-color:${bgColor};color:${textColor};border:${decoration};cursor:pointer;font-weight:${isSelected?'600':'400'};font-size:0.9rem">${day}</button>`;
+  }
+
+  html += `</div>`;
+  html += `<input type="hidden" id="selected-date" value="${selectedKey}">`;
+  html += `</div>`;
+  return html;
+}
+
+export function renderProductDateModal(potId, productSlug, lastDate) {
+  return `<div class="modal-overlay" data-action="closeModal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📅 Cambiar fecha de aplicación</div>
+      <div class="section-subtitle" style="margin-bottom:12px">La frecuencia se mantiene, cambia el día base</div>
+      <div style="overflow-y:auto;max-height:60vh;padding-right:8px">
+        ${generateMonthlyCalendar(lastDate)}
+      </div>
+      <button class="btn btn-primary btn-block" data-action="saveProductDate" data-pot-id="${potId}" data-product-slug="${productSlug}" style="margin-top:12px">💾 Guardar</button>
+    </div>
+  </div>`;
+}
+
 // ===== TOAST =====
 export function showToast(message, duration = 3000) {
   let toast = document.getElementById('app-toast');

@@ -528,6 +528,7 @@ async function handleAction(action, target) {
       product.notes = document.getElementById('product-notes').value;
       await DB.updateProduct(product);
       showToast('Producto guardado ✓');
+      setTimeout(async () => { mainEl().innerHTML = await renderProductDetail(slug); }, 300);
       break;
     }
     case 'editProductModal': {

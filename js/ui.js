@@ -15,11 +15,11 @@ function formatDateShort(iso) {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function dateKey(iso) { return new Date(iso).toISOString().slice(0, 10); }
-function escapeHtml(s) {
+export function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function toInputDate(iso) { return iso ? iso.slice(0,10) : ''; }
+export function toInputDate(iso) { return iso ? iso.slice(0,10) : ''; }
 
 const POT_EMOJIS = ['🪴','🌿','🌱','🌵','🌺','🌻','🌷','🍀','🌾','🌳','🌲','🌸','🍃','🎋','🪻','🌹','💐','🪷'];
 
@@ -91,8 +91,7 @@ export async function renderHome() {
     </div>`;
   }
   potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
-  return `<div class="flex items-center justify-between mb-8"><div class="section-title">Mis Macetas</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas">✅</button></div>
-    <div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div>
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas">✅</button></div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 
@@ -200,7 +199,7 @@ export async function renderPot(potId) {
   const plantSubtitle = plantTypes.length
     ? `🌸 ${escapeHtml(plantTypes.join(', '))}${pot.description ? ' · ' + escapeHtml(pot.description) : ''}`
     : escapeHtml(pot.description || 'Sin descripción');
-  return `<div class="flex items-center justify-between mb-16"><div><div class="section-title">${pot.emoji||'🪴'} ${escapeHtml(pot.name)}</div><div class="section-subtitle">${plantSubtitle}</div></div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${plantSubtitle}</div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
 }
 
 // ===== PHOTO DETAIL VIEW =====
@@ -315,9 +314,18 @@ function mapIssuesToProducts(issues, soilData) {
 function computeTaskStatus(pot, product, allLogs) {
   const freq = pot.scheduleOverrides?.[product.slug] || product.defaultFrequencyDays;
   const potLogs = allLogs.filter(l => l.potId === Number(pot.id) && l.productSlug === product.slug);
-  if (!potLogs.length) return { status: 'danger', label: 'Nunca aplicado', freq };
-  const last = potLogs.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))[0];
+  if (!potLogs.length) return { status: 'warning', label: 'Pendiente', freq };
+  const sorted = potLogs.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
+  const last = sorted[0];
   const diffDays = Math.floor((new Date() - new Date(last.appliedAt)) / 86400000);
+
+  if (diffDays < 0) {
+    const daysUntil = Math.abs(diffDays);
+    if (daysUntil > 1) return { status: 'healthy', label: `Faltan ${daysUntil} días`, freq };
+    if (daysUntil === 1) return { status: 'healthy', label: 'Falta 1 día', freq };
+    return { status: 'warning', label: 'Hoy toca aplicar', freq };
+  }
+
   const rem = freq - diffDays;
   if (rem > 1)  return { status: 'healthy', label: `Faltan ${rem} días`, freq };
   if (rem === 1) return { status: 'healthy', label: 'Falta 1 día', freq };
@@ -335,9 +343,7 @@ export async function renderTasks() {
   ]);
   products.sort((a, b) => a.name.localeCompare(b.name));
 
-  const header = `<div class="flex items-center justify-between mb-8"><div class="section-title" style="margin-bottom:0">📋 Tareas</div><div class="flex gap-8"><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-navigate="products">🧴 Productos</button></div></div><div class="section-subtitle">Pendientes de tu jardín</div>`;
-
-  if (pots.length === 0) return header + `<div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
+  if (pots.length === 0) return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button></div><div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
 
   const allLogs = await DB.getTaskLogsByPots(pots.map(p => Number(p.id)));
   let html = '';
@@ -346,19 +352,19 @@ export async function renderTasks() {
     const pot = pots[i];
     const potAnalyses = analyses[i] || [];
     const recommended = mapIssuesToProducts(potAnalyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
-    const activeProductSlugs = pot.activeProducts || recommended.map(p => p.slug);
+    const activeProductSlugs = (pot.activeProducts && pot.activeProducts.length > 0) ? pot.activeProducts : recommended.map(p => p.slug);
     const activeProducts = products.filter(p => activeProductSlugs.includes(p.slug));
 
     let rows = '';
     for (const prod of activeProducts) {
       const ts = computeTaskStatus(pot, prod, allLogs);
-      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><span class="task-status-badge status-${ts.status}">${escapeHtml(ts.label)}</span><button class="btn-apply" data-action="applyProduct" data-pot-id="${pot.id}" data-product-slug="${escapeHtml(prod.slug)}">✅</button></div>`;
+      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
     }
 
-    html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check" style="position:absolute;top:10px;right:10px;opacity:0"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span><button class="btn-icon" data-action="editPotProducts" data-pot-id="${pot.id}" style="margin-left:auto;padding:4px;opacity:0.7" onclick="event.stopPropagation()">⚙️</button></div>${rows}</div>`;
+    html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
   }
 
-  return header + html;
+  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button></div>${html}`;
 }
 
 // ===== PRODUCTS VIEW =====
@@ -369,7 +375,7 @@ export async function renderProducts() {
   for (const p of products) {
     list += `<div class="glass-card product-card" data-navigate="product/${p.slug}" id="product-${p.slug}"><div class="product-icon">${escapeHtml(p.icon)}</div><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-freq">Cada ${escapeHtml(p.defaultFrequencyDays)} días</div></div><span class="product-arrow">›</span></div>`;
   }
-  return `<div class="section-title">🧴 Productos</div><div class="section-subtitle">Toca un producto para editar · usa ➕ para agregar</div><div class="product-list">${list}</div><button class="fab" data-action="addProduct" title="Nuevo producto">➕</button>`;
+  return `<div class="section-subtitle" style="margin-bottom:16px">Toca un producto para editar · usa ➕ para agregar</div><div class="product-list">${list}</div><button class="fab" data-action="addProduct" title="Nuevo producto">➕</button>`;
 }
 
 // ===== PRODUCT DETAIL VIEW =====
@@ -383,7 +389,7 @@ export async function renderProductDetail(slug) {
       photosHtml += `<div class="product-photo-thumb"><img src="${dataUrl}" alt="${product.name}"><button class="delete-x" data-action="deleteProductPhoto" data-slug="${slug}" data-index="${i}">✕</button></div>`;
     }
   }
-  return `<div class="flex items-center justify-between mb-16"><div><div class="section-title">${escapeHtml(product.icon)} ${escapeHtml(product.name)}</div><div class="section-subtitle">Cada ${escapeHtml(product.defaultFrequencyDays)} días${product.notes ? ' · ' + escapeHtml(product.notes.slice(0,40)) : ''}</div></div><button class="btn btn-secondary btn-icon" data-action="editProductModal" data-slug="${slug}" title="Editar">✏️</button></div>
+  return `<div class="flex items-center justify-between mb-4" style="gap:8px"><div class="section-subtitle">Cada ${escapeHtml(product.defaultFrequencyDays)} días${product.notes ? ' · ' + escapeHtml(product.notes.slice(0,40)) : ''}</div><button class="btn btn-secondary btn-icon" data-action="editProductModal" data-slug="${slug}" title="Editar">✏️</button></div>
     <div class="glass-card" style="margin-bottom:16px"><div class="form-group"><label class="form-label">Frecuencia global (días)</label><input class="form-input" type="number" id="product-freq" min="1" max="365" value="${product.defaultFrequencyDays}"></div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="product-notes" placeholder="Notas sobre este producto...">${escapeHtml(product.notes||'')}</textarea></div><button class="btn btn-primary btn-block" data-action="saveProduct" data-slug="${slug}" id="save-product-btn">💾 Guardar</button></div>
     <div class="glass-card"><div class="form-label">Fotos del producto</div><div class="product-photos">${photosHtml}<button class="btn btn-secondary btn-sm" data-action="addProductPhoto" data-slug="${slug}" id="add-product-photo-btn">➕ Foto</button></div></div>`;
 }
@@ -406,6 +412,24 @@ export async function renderEditPotProductsModal(potId) {
       <div class="modal-title">📋 Productos para ${escapeHtml(pot.name)}</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:60vh;overflow-y:auto">${checkboxes}</div>
       <button class="btn btn-primary btn-block" data-action="savePotProducts" data-pot-id="${potId}">✅ Guardar</button>
+    </div>
+  </div>`;
+}
+
+export async function renderProductMenu(potId, productSlug) {
+  const pot = await DB.getPot(Number(potId));
+  const product = await DB.getProduct(productSlug);
+  if (!pot || !product) return '';
+
+  return `<div class="modal-overlay" data-action="closeModal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">${escapeHtml(product.icon)} ${escapeHtml(product.name)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+        <button class="btn btn-secondary btn-block" data-action="changeProductDate" data-pot-id="${potId}" data-product-slug="${productSlug}">📅 Cambiar fecha</button>
+        <button class="btn btn-secondary btn-block" data-action="markProductDone" data-pot-id="${potId}" data-product-slug="${productSlug}">✅ Aplicado</button>
+        <button class="btn btn-danger btn-block" data-action="deleteProductFromPot" data-pot-id="${potId}" data-product-slug="${productSlug}">🗑️ Eliminar</button>
+      </div>
     </div>
   </div>`;
 }
@@ -571,8 +595,8 @@ export async function renderSettings() {
 
   const currentTheme = currentThemeRaw || 'dark';
 
-  return `<div class="section-title">⚙️ Configuración</div><div class="section-subtitle">Ajustes de la aplicación</div>
-    <div class="settings-section"><h3>🎨 Apariencia</h3><div class="glass-card">
+  return `<div class="settings-section"><div class="glass-card" style="margin-top:0">
+      <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">🎨 Tema actual</div>
       <div class="theme-picker">
         <button class="theme-option ${currentTheme==='dark'?'active':''}" data-action="setTheme" data-theme="dark">
           <div class="theme-preview theme-preview-dark"></div>
@@ -640,6 +664,29 @@ export function renderBulkPotTaskModal(products, potCount) {
       <div class="modal-title">📋 Aplicar a ${potCount} maceta${potCount!==1?'s':''}</div>
       <div class="section-subtitle">¿Qué aplicaste hoy?</div>
       <div class="flex flex-col gap-8">${list}</div>
+    </div>
+  </div>`;
+}
+
+export function renderBulkApplyProductModal(products, potCount) {
+  let list = '';
+  if (products.length === 0) {
+    list = `<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.85rem">No hay productos disponibles. <a href="#products" style="color:var(--accent)">Crear uno</a></div>`;
+  } else {
+    for (const p of products) {
+      list += `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
+        <span style="font-size:1.3rem">${escapeHtml(p.icon)}</span>
+        <span style="flex:1;text-align:left">${escapeHtml(p.name)}</span>
+        <span style="color:var(--text-muted);font-size:0.72rem">c/${escapeHtml(p.defaultFrequencyDays)} días</span>
+      </button>`;
+    }
+  }
+  return `<div class="modal-overlay" data-action="closeModal" id="bulk-apply-product-modal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📋 Aplicar producto</div>
+      <div class="section-subtitle">Selecciona un producto para aplicar a ${potCount} maceta${potCount!==1?'s':''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">${list}</div>
     </div>
   </div>`;
 }

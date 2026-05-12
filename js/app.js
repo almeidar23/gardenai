@@ -14,9 +14,9 @@ import {
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal,
   renderEditPhotoModal, renderPotScheduleModal, renderLogin,
   renderBulkDateModal, renderBulkNotesModal,
-  renderProductModal, renderBulkPotTaskModal,
+  renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderProductMenu,
   renderEmailLogin, renderRegister, renderVerifyEmail,
-  showToast, clearPhotoCache, getPhotoURL
+  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -92,13 +92,15 @@ async function navigate(hash) {
 
   if (!hash || hash === '#' || hash === '#home') {
     newRoute = 'home';
+    headerHtml = '🪴 Mis Macetas';
     html = await renderHome();
   } else if (hash === '#tasks') {
     newRoute = 'tasks';
+    headerHtml = '📋 Tareas';
     html = await renderTasks();
   } else if (hash === '#products') {
     newRoute = 'products';
-    headerHtml = '<button class="header-back" data-action="back">←</button> Productos';
+    headerHtml = '<button class="header-back" data-action="back">←</button> 🧴 Productos';
     html = await renderProducts();
   } else if (hash.startsWith('#product/')) {
     newRoute = 'product';
@@ -123,6 +125,14 @@ async function navigate(hash) {
     }
   } else if (hash === '#settings') {
     newRoute = 'settings';
+    const currentThemeRaw = await DB.getSetting('theme');
+    const currentTheme = currentThemeRaw || 'dark';
+    headerHtml = `<div style="flex:1"><div style="font-size:0.9rem;font-weight:500">⚙️ Configuración</div><div style="font-size:0.75rem;color:var(--text-muted)">Ajustes de la aplicación</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='dark'?'1':'0.4'}" data-action="setTheme" data-theme="dark" title="Jardín Nocturno">🌙</button>
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='botanical'?'1':'0.4'}" data-action="setTheme" data-theme="botanical" title="Botanical">🌿</button>
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='tropical'?'1':'0.4'}" data-action="setTheme" data-theme="tropical" title="Jardín Vivo">🌺</button>
+      </div>`;
     html = await renderSettings();
   }
 
@@ -149,7 +159,9 @@ function updateNav() {
     el.classList.toggle('active',
       (t==='home' && currentRoute==='home') ||
       (t==='tasks' && currentRoute==='tasks') ||
-      (t==='settings' && (currentRoute==='settings'||currentRoute==='products'||currentRoute==='product'))
+      (t==='products' && (currentRoute==='products'||currentRoute==='product')) ||
+      (t==='settings' && currentRoute==='settings') ||
+      (t==='stats' && currentRoute==='stats')
     );
   });
 }
@@ -190,9 +202,11 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectModeTask': {
       taskSelectMode = !taskSelectMode;
-      document.querySelectorAll('input.task-pot-checkbox').forEach(el => el.style.display = taskSelectMode ? 'block' : 'none');
       const tbtn = document.getElementById('pot-select-task-btn');
-      if (tbtn) tbtn.textContent = taskSelectMode ? '🟢' : '✅';
+      if (tbtn) {
+        tbtn.textContent = taskSelectMode ? '✅' : '✅';
+        tbtn.classList.toggle('select-mode-active', taskSelectMode);
+      }
       if (!taskSelectMode) clearTaskPotSelection();
       showToast(taskSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
       break;
@@ -201,23 +215,42 @@ async function handleAction(action, target) {
     case 'bulkApplyProduct': {
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
-      modalsEl().innerHTML = `<div class="modal-overlay" data-action="closeModal">
-        <div class="modal-content" onclick="event.stopPropagation()">
-          <div class="modal-handle"></div>
-          <div class="modal-title">📋 Aplicar a ${selectedPotsTask.size} maceta${selectedPotsTask.size!==1?'s':''}</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-            ${products.map(p => `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${p.slug}">${escapeHtml(p.icon)} ${escapeHtml(p.name)}</button>`).join('')}
-          </div>
-        </div>
-      </div>`;
+      console.log('bulkApplyProduct triggered, products:', products.length);
+      const modalHtml = renderBulkApplyProductModal(products, selectedPotsTask.size);
+      console.log('Modal HTML:', modalHtml.substring(0, 100));
+      modalsEl().innerHTML = modalHtml;
+      console.log('Modal rendered, modalsEl:', modalsEl().innerHTML.substring(0, 100));
       break;
     }
     case 'confirmBulkApplyProduct': {
       const slug = target.dataset.productSlug;
       const ids = [...selectedPotsTask];
-      for (const potId of ids) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
+      const products = await DB.getAllProducts();
+
+      for (const potId of ids) {
+        const pot = await DB.getPot(Number(potId));
+        if (pot) {
+          if (!pot.activeProducts || pot.activeProducts.length === 0) {
+            const analyses = await DB.getAnalysesByPot(pot.id);
+            const issues = analyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []);
+            const recommended = issues.length > 0 ? issues.flatMap(issue => {
+              if (issue === 'pest') return ['fungicide', 'insecticide'];
+              if (issue === 'disease') return ['fungicide'];
+              if (issue === 'nutrient-deficiency') return ['fertilizer'];
+              if (issue === 'water-stress') return [];
+              return [];
+            }) : [];
+            pot.activeProducts = [...new Set([...recommended, slug])];
+          } else if (!pot.activeProducts.includes(slug)) {
+            pot.activeProducts.push(slug);
+          }
+          await DB.updatePot(pot);
+          await DB.deleteTaskLogsByProductAndPot(Number(potId), slug);
+        }
+      }
       closeModal(); clearTaskPotSelection();
-      showToast(`✅ Aplicado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      showToast(`✅ Producto agregado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      await new Promise(r => setTimeout(r, 500));
       mainEl().innerHTML = await renderTasks();
       break;
     }
@@ -235,6 +268,18 @@ async function handleAction(action, target) {
       await DB.updatePot(pot);
       closeModal(); showToast('Productos guardados ✓');
       mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'removeProductFromPot': {
+      const potId = Number(target.dataset.potId);
+      const productSlug = target.dataset.productSlug;
+      const pot = await DB.getPot(potId);
+      if (pot.activeProducts) {
+        pot.activeProducts = pot.activeProducts.filter(s => s !== productSlug);
+        await DB.updatePot(pot);
+        showToast('Producto removido ✓');
+        mainEl().innerHTML = await renderTasks();
+      }
       break;
     }
     case 'addPot': { modalsEl().innerHTML = renderPotModal(); setupPotForm(); break; }
@@ -402,6 +447,72 @@ async function handleAction(action, target) {
       const potId = target.dataset.potId, slug = target.dataset.productSlug;
       await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
       showToast('✅ Producto aplicado');
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'openProductMenu': {
+      const potId = target.dataset.potId, slug = target.dataset.productSlug;
+      modalsEl().innerHTML = await renderProductMenu(potId, slug);
+      break;
+    }
+    case 'changeProductDate': {
+      const potId = target.dataset.potId, slug = target.dataset.productSlug;
+      const allLogs = await DB.getTaskLogsByPot(Number(potId));
+      const logs = allLogs.filter(l => l.productSlug === slug);
+      const lastLog = logs.length > 0 ? logs.sort((a,b) => new Date(b.appliedAt) - new Date(a.appliedAt))[0] : null;
+      const lastDate = lastLog ? toInputDate(lastLog.appliedAt) : new Date().toISOString().slice(0, 10);
+      modalsEl().innerHTML = `<div class="modal-overlay" data-action="closeModal">
+        <div class="modal-content">
+          <div class="modal-handle"></div>
+          <div class="modal-title">📅 Cambiar fecha de aplicación</div>
+          <div class="section-subtitle" style="margin-bottom:12px">La frecuencia se mantiene, cambia el día base</div>
+          <div class="form-group">
+            <input class="form-input" type="date" id="product-date" value="${lastDate}">
+          </div>
+          <button class="btn btn-primary btn-block" data-action="saveProductDate" data-pot-id="${potId}" data-product-slug="${slug}">💾 Guardar</button>
+        </div>
+      </div>`;
+      break;
+    }
+    case 'saveProductDate': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      const dateInput = document.getElementById('product-date')?.value;
+      if (dateInput) {
+        const date = new Date(dateInput + 'T12:00:00');
+        await DB.addTaskLog({ potId, productSlug: slug, appliedAt: date.toISOString() });
+        closeModal();
+        showToast('✅ Fecha actualizada');
+        await new Promise(r => setTimeout(r, 500));
+        mainEl().innerHTML = await renderTasks();
+      }
+      break;
+    }
+    case 'markProductDone': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      console.log('markProductDone:', potId, slug);
+      const newLog = await DB.addTaskLog({ potId, productSlug: slug });
+      console.log('New log created:', newLog);
+      closeModal();
+      showToast('✅ Producto marcado como aplicado');
+      await new Promise(r => setTimeout(r, 500));
+      const allLogs = await DB.getTaskLogsByPot(potId);
+      console.log('All logs after add:', allLogs);
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'deleteProductFromPot': {
+      const potId = Number(target.dataset.potId);
+      const slug = target.dataset.productSlug;
+      const pot = await DB.getPot(potId);
+      if (!pot) break;
+      pot.activeProducts = (pot.activeProducts || []).filter(s => s !== slug);
+      await DB.updatePot(pot);
+      await DB.deleteTaskLogsByProductAndPot(potId, slug);
+      closeModal();
+      showToast('🗑️ Producto eliminado');
+      await new Promise(r => setTimeout(r, 100));
       mainEl().innerHTML = await renderTasks();
       break;
     }

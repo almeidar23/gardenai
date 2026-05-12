@@ -258,6 +258,15 @@ const DB = {
     return snap.docs.map(d => d.data());
   },
 
+  async deleteTaskLogsByProductAndPot(potId, productSlug) {
+    const snap = await getDocs(query(
+      col('taskLogs'),
+      where('potId', '==', Number(potId)),
+      where('productSlug', '==', productSlug)
+    ));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  },
+
   // ===== TASK STATUS HELPER =====
   async getTaskStatus(potId, product) {
     const pot = await this.getPot(Number(potId));

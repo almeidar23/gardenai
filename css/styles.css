@@ -296,12 +296,15 @@ a { color: var(--accent); text-decoration: none; }
 
 .header-title {
   flex: 1;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+  text-align: center;
 }
 
 .header-actions {
@@ -966,12 +969,53 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* ===== TASK CARDS ===== */
 .task-pot-card {
+  position: relative;
   margin-bottom: 14px;
   animation: slideUp 0.4s ease backwards;
 }
 
 .task-pot-card:hover {
   transform: none;
+}
+
+.task-pot-card.pot-selected {
+  outline: 6px solid var(--accent);
+  outline-offset: 2px;
+  background: var(--accent-glow);
+}
+
+.pot-select-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  transition: all 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pot-select-check.checked {
+  opacity: 1;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(45, 212, 168, 0.8), 0 0 40px rgba(45, 212, 168, 0.4), inset 0 0 8px rgba(255, 255, 255, 0.3);
+  pointer-events: auto;
+  transform: scale(1.05);
+}
+
+.pot-select-check.checked::after {
+  content: '✓';
+  color: white;
+  font-weight: bold;
+  font-size: 1.3rem;
 }
 
 .task-pot-header {
@@ -1016,6 +1060,34 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   min-width: 0;
 }
 
+.task-row-actions {
+  display: none;
+  gap: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.task-row:hover .task-row-actions {
+  display: flex;
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.btn-icon-small:hover {
+  opacity: 1;
+  background: rgba(45, 212, 168, 0.1);
+  color: var(--accent);
+}
+
 .task-row .task-status-badge {
   font-size: 0.65rem;
   font-weight: 600;
@@ -1023,6 +1095,52 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   border-radius: 12px;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.btn-status {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.status-badge.status-healthy {
+  background: rgba(16,185,129,0.15);
+  color: var(--success);
+  border: 1px solid rgba(16,185,129,0.25);
+}
+.status-badge.status-warning {
+  background: rgba(245,158,11,0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.status-badge.status-danger {
+  background: rgba(239,68,68,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.25);
+}
+
+.btn-status:hover .status-badge {
+  filter: brightness(1.2);
+}
+
+.select-mode-active {
+  background: var(--accent) !important;
+  color: white !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 16px rgba(45, 212, 168, 0.6);
 }
 
 .task-row .btn-apply {

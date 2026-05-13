@@ -266,7 +266,7 @@ function renderSoilAnalysis(r) {
   return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">📊</span><h3>Datos del Suelo</h3></div>${ph}${r.confidence?`<div class="mt-8" style="font-size:0.75rem;color:var(--text-muted)">Confianza: ${escapeHtml(r.confidence)}</div>`:''}${r.notes?`<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">${escapeHtml(r.notes)}</div>`:''}</div>`;
 }
 
-function mapIssuesToProducts(issues, soilData) {
+export function mapIssuesToProducts(issues, soilData) {
   const recommendations = new Map();
   const keywordMap = {
     water: { keywords: ['agua', 'seca', 'riego', 'humedad baja', 'sequedad'], slug: 'water', name: 'Agua', icon: '💧' },
@@ -356,7 +356,7 @@ export async function renderTasks() {
     const potAnalyses = analyses[i] || [];
     const recommended = mapIssuesToProducts(potAnalyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
     const recommendedSlugs = recommended.map(p => p.slug);
-    const activeProductSlugs = (pot.activeProducts && pot.activeProducts.length > 0) ? pot.activeProducts : recommendedSlugs;
+    const activeProductSlugs = [...new Set([...(pot.activeProducts || []), ...recommendedSlugs])];
     const activeProducts = products.filter(p => activeProductSlugs.includes(p.slug));
 
     let rows = '';

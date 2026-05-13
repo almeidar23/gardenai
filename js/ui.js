@@ -363,7 +363,8 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
-      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
+      const recommendedLabel = isRecommended ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500">Recomendado</span>` : '';
+      rows += `<div class="task-row">${recommendedLabel}<span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
     }
 
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
@@ -673,15 +674,20 @@ export function renderBulkPotTaskModal(products, potCount) {
   </div>`;
 }
 
-export function renderBulkApplyProductModal(products, potCount) {
+export function renderBulkApplyProductModal(products, potCount, recommendedSlugs = []) {
   let list = '';
   if (products.length === 0) {
     list = `<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.85rem">No hay productos disponibles. <a href="#products" style="color:var(--accent)">Crear uno</a></div>`;
   } else {
     for (const p of products) {
+      const isRecommended = recommendedSlugs.includes(p.slug);
+      const recommendedLabel = isRecommended ? `<span style="color:var(--text-muted);font-size:0.72rem;font-weight:500">Recomendado</span>` : '';
       list += `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
         <span style="font-size:1.3rem">${escapeHtml(p.icon)}</span>
-        <span style="flex:1;text-align:left">${escapeHtml(p.name)}</span>
+        <span style="flex:1;text-align:left">
+          <div>${escapeHtml(p.name)}</div>
+          ${recommendedLabel}
+        </span>
         <span style="color:var(--text-muted);font-size:0.72rem">c/${escapeHtml(p.defaultFrequencyDays)} días</span>
       </button>`;
     }
@@ -704,6 +710,75 @@ export function renderBulkDateModal(count) {
 
 export function renderBulkNotesModal(count) {
   return `<div class="modal-overlay" data-action="closeModal" id="bulk-notes-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📝 Agregar Notas</div><div class="section-subtitle">Se aplicará a ${count} foto${count!==1?'s':''} seleccionada${count!==1?'s':''}</div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="bulk-notes-input" placeholder="Tus observaciones..." style="min-height:100px"></textarea></div><button class="btn btn-primary btn-block" data-action="confirmBulkNotes" id="confirm-bulk-notes-btn">✅ Aplicar</button></div></div>`;
+}
+
+// ===== CALENDAR =====
+export function generateMonthlyCalendar(initialDate) {
+  const date = new Date(initialDate + 'T12:00:00');
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  const selectedKey = initialDate;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  let html = `<div class="calendar-wrapper" data-year="${year}" data-month="${month}">`;
+  html += `<div class="calendar-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px">`;
+  html += `<button class="btn btn-sm" data-action="calendarPrevMonth" style="flex:0;padding:4px 8px;font-size:0.8rem">←</button>`;
+  html += `<div style="flex:1;text-align:center;font-weight:600">${monthNames[month]} ${year}</div>`;
+  html += `<button class="btn btn-sm" data-action="calendarNextMonth" style="flex:0;padding:4px 8px;font-size:0.8rem">→</button>`;
+  html += `</div>`;
+
+  html += `<div class="calendar-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px">`;
+  for (let i = 0; i < 7; i++) {
+    html += `<div style="text-align:center;font-size:0.75rem;font-weight:600;color:var(--text-muted);padding:4px">${dayNames[i]}</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="calendar-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">`;
+
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    html += `<div style="padding:8px"></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayDate = new Date(year, month, day);
+    const dayKey = dayDate.toISOString().slice(0, 10);
+    const isSelected = dayKey === selectedKey;
+    const isToday = dayKey === todayKey;
+    const bgColor = isSelected ? 'var(--accent)' : 'transparent';
+    const textColor = isSelected ? '#fff' : 'var(--text-primary)';
+    const decoration = isToday && !isSelected ? '2px solid var(--accent)' : 'none';
+
+    html += `<button class="calendar-day" data-action="selectCalendarDay" data-date="${dayKey}"
+      style="padding:8px;border-radius:4px;background-color:${bgColor};color:${textColor};border:${decoration};cursor:pointer;font-weight:${isSelected?'600':'400'};font-size:0.9rem">${day}</button>`;
+  }
+
+  html += `</div>`;
+  html += `<input type="hidden" id="selected-date" value="${selectedKey}">`;
+  html += `</div>`;
+  return html;
+}
+
+export function renderProductDateModal(potId, productSlug, lastDate) {
+  return `<div class="modal-overlay" data-action="closeModal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📅 Cambiar fecha de aplicación</div>
+      <div class="section-subtitle" style="margin-bottom:12px">La frecuencia se mantiene, cambia el día base</div>
+      <div style="overflow-y:auto;max-height:60vh;padding-right:8px">
+        ${generateMonthlyCalendar(lastDate)}
+      </div>
+      <button class="btn btn-primary btn-block" data-action="saveProductDate" data-pot-id="${potId}" data-product-slug="${productSlug}" style="margin-top:12px">💾 Guardar</button>
+    </div>
+  </div>`;
 }
 
 // ===== TOAST =====

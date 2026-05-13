@@ -363,8 +363,8 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
-      const recommendedLabel = (isRecommended && ts.label !== 'Pendiente') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500">Recomendado</span>` : '';
-      rows += `<div class="task-row">${recommendedLabel}<span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
+      const aiIcon = isRecommended ? `<span style="margin-left:6px;font-size:0.9rem" title="Recomendado por IA">🤖</span>` : '';
+      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto;display:flex;align-items:center;gap:6px"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span>${aiIcon}</button></div>`;
     }
 
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;

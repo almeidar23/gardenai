@@ -16,7 +16,7 @@ import {
   renderBulkDateModal, renderBulkNotesModal,
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
-  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate
+  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts
 } from './ui.js';
 import { runMigration } from './migration.js';
 

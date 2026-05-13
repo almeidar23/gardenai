@@ -215,11 +215,19 @@ async function handleAction(action, target) {
     case 'bulkApplyProduct': {
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
-      console.log('bulkApplyProduct triggered, products:', products.length);
-      const modalHtml = renderBulkApplyProductModal(products, selectedPotsTask.size);
-      console.log('Modal HTML:', modalHtml.substring(0, 100));
+
+      // Get recommended products from selected pots
+      const recommendedSet = new Set();
+      const selectedPotIds = [...selectedPotsTask];
+      for (const potId of selectedPotIds) {
+        const pot = await DB.getPot(Number(potId));
+        const analyses = await DB.getAnalysesByPot(Number(potId));
+        const recommended = mapIssuesToProducts(analyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
+        recommended.forEach(p => recommendedSet.add(p.slug));
+      }
+
+      const modalHtml = renderBulkApplyProductModal(products, selectedPotsTask.size, [...recommendedSet]);
       modalsEl().innerHTML = modalHtml;
-      console.log('Modal rendered, modalsEl:', modalsEl().innerHTML.substring(0, 100));
       break;
     }
     case 'confirmBulkApplyProduct': {

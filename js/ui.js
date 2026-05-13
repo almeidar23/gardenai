@@ -363,7 +363,8 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
-      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
+      const recommendedLabel = isRecommended ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500">Recomendado</span>` : '';
+      rows += `<div class="task-row">${recommendedLabel}<span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
     }
 
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
@@ -673,15 +674,20 @@ export function renderBulkPotTaskModal(products, potCount) {
   </div>`;
 }
 
-export function renderBulkApplyProductModal(products, potCount) {
+export function renderBulkApplyProductModal(products, potCount, recommendedSlugs = []) {
   let list = '';
   if (products.length === 0) {
     list = `<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.85rem">No hay productos disponibles. <a href="#products" style="color:var(--accent)">Crear uno</a></div>`;
   } else {
     for (const p of products) {
+      const isRecommended = recommendedSlugs.includes(p.slug);
+      const recommendedLabel = isRecommended ? `<span style="color:var(--text-muted);font-size:0.72rem;font-weight:500">Recomendado</span>` : '';
       list += `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
         <span style="font-size:1.3rem">${escapeHtml(p.icon)}</span>
-        <span style="flex:1;text-align:left">${escapeHtml(p.name)}</span>
+        <span style="flex:1;text-align:left">
+          <div>${escapeHtml(p.name)}</div>
+          ${recommendedLabel}
+        </span>
         <span style="color:var(--text-muted);font-size:0.72rem">c/${escapeHtml(p.defaultFrequencyDays)} días</span>
       </button>`;
     }

@@ -443,7 +443,7 @@ a { color: var(--accent); text-decoration: none; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   text-align: center;
   animation: slideUp 0.4s ease backwards;
 }
@@ -456,21 +456,21 @@ a { color: var(--accent); text-decoration: none; }
 .pot-card:nth-child(6) { animation-delay: 0.3s; }
 
 .pot-card .pot-thumb {
-  width: 64px;
-  height: 64px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--border-glass);
+  border: 3px solid var(--border-glass);
   background: var(--bg-secondary);
 }
 
 .pot-card .pot-icon {
-  font-size: 2.5rem;
+  font-size: 4.5rem;
   line-height: 1;
 }
 
 .pot-card .pot-name {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
@@ -525,7 +525,7 @@ a { color: var(--accent); text-decoration: none; }
   background: rgba(45, 212, 168, 0.05);
   box-shadow: none;
 }
-.pot-card-add .pot-icon { font-size: 2rem; }
+.pot-card-add .pot-icon { font-size: 4rem; }
 
 /* ===== SECTION TITLES ===== */
 .section-title {

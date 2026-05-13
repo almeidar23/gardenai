@@ -482,29 +482,33 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 600;
 }
 
-.pot-top-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 100%;
-  display: flex;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.pot-top-bar .pot-status {
+.pot-status-badge {
   position: absolute;
   top: 12px;
   left: 12px;
-  pointer-events: auto;
+  z-index: 10;
 }
 
-.pot-top-bar .pot-count {
+.pot-status-badge .pot-status {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  opacity: 0.9;
+}
+
+.pot-count-badge {
   position: absolute;
   top: 12px;
   right: 12px;
-  pointer-events: auto;
+  z-index: 10;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: rgba(45, 212, 168, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(45, 212, 168, 0.15);
 }
 
 .pot-card .pot-plant-type {
@@ -537,32 +541,6 @@ a { color: var(--accent); text-decoration: none; }
   opacity: 0.9;
 }
 
-/* Override for positioned badges */
-.pot-card .pot-top-bar .pot-count {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  pointer-events: auto;
-  padding: 4px 8px;
-  background: rgba(45, 212, 168, 0.08);
-  border-radius: 12px;
-  border: 1px solid rgba(45, 212, 168, 0.15);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.pot-card .pot-top-bar .pot-status {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  pointer-events: auto;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-weight: 600;
-  border: 1px solid currentColor;
-  opacity: 0.9;
-  font-size: 0.75rem;
-}
 
 .status-healthy {
   background: rgba(16,185,129,0.15);

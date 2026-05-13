@@ -490,8 +490,15 @@ a { color: var(--accent); text-decoration: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
   z-index: 10;
+}
+
+.pot-top-bar .pot-status {
+  margin-right: auto;
+}
+
+.pot-top-bar .pot-count {
+  margin-left: auto;
 }
 
 .pot-card .pot-plant-type {

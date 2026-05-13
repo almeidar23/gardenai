@@ -519,7 +519,7 @@ a { color: var(--accent); text-decoration: none; }
   letter-spacing: 0.2px;
 }
 
-.pot-card .pot-count {
+.pot-card:not(.pot-card-add) .pot-count {
   font-size: 0.75rem;
   color: var(--text-muted);
   padding: 4px 8px;
@@ -528,13 +528,40 @@ a { color: var(--accent); text-decoration: none; }
   border: 1px solid rgba(45, 212, 168, 0.15);
 }
 
-.pot-card .pot-status {
+.pot-card:not(.pot-card-add) .pot-status {
   font-size: 0.75rem;
   padding: 4px 10px;
   border-radius: 12px;
   font-weight: 600;
   border: 1px solid currentColor;
   opacity: 0.9;
+}
+
+/* Override for positioned badges */
+.pot-card .pot-top-bar .pot-count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  pointer-events: auto;
+  padding: 4px 8px;
+  background: rgba(45, 212, 168, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(45, 212, 168, 0.15);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.pot-card .pot-top-bar .pot-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  pointer-events: auto;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  opacity: 0.9;
+  font-size: 0.75rem;
 }
 
 .status-healthy {

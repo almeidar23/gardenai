@@ -11,8 +11,8 @@ import { captureFromCamera, uploadFromGallery, blobToDataURL } from './camera.js
 import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
-  renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal,
-  renderEditPhotoModal, renderPotScheduleModal, renderLogin,
+  renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal, renderNotesModal, renderEditNoteModal, renderEditAnalysisModal, renderEditDayModal,
+  renderEditPhotoModal, renderPotScheduleModal, renderLogin, renderStats,
   renderBulkDateModal, renderBulkNotesModal,
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
@@ -123,6 +123,10 @@ async function navigate(hash) {
       headerHtml = `<button class="header-back" data-action="back">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
       html = potHtml;
     }
+  } else if (hash === '#stats') {
+    newRoute = 'stats';
+    headerHtml = '📊 Estadísticas';
+    html = await renderStats();
   } else if (hash === '#settings') {
     newRoute = 'settings';
     const currentThemeRaw = await DB.getSetting('theme');
@@ -301,6 +305,192 @@ async function handleAction(action, target) {
     case 'addPhoto': { modalsEl().innerHTML = renderPhotoModal(target.dataset.potId); break; }
     case 'selectPhotoType': {
       modalsEl().innerHTML = renderPhotoSourceModal(target.dataset.potId, target.dataset.photoType);
+      break;
+    }
+    case 'openNotesModal': {
+      const potId = target.dataset.potId;
+      modalsEl().innerHTML = renderNotesModal(potId);
+      break;
+    }
+    case 'saveNote': {
+      const potId = target.dataset.potId;
+      const noteText = document.getElementById('new-note-text')?.value || '';
+      if (!noteText.trim()) {
+        showToast('Escribe algo antes de guardar');
+        break;
+      }
+      try {
+        await DB.addNote({
+          potId: Number(potId),
+          text: noteText,
+          createdAt: new Date().toISOString()
+        });
+        closeModal();
+        showToast('Nota guardada ✅');
+        await navigate(`#pot/${potId}`);
+      } catch(e) {
+        showToast('Error al guardar: ' + e.message);
+      }
+      break;
+    }
+    case 'editNote': {
+      const noteId = target.dataset.noteId;
+      modalsEl().innerHTML = await renderEditNoteModal(noteId);
+      const form = document.getElementById('edit-note-form');
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const noteText = document.getElementById('edit-note-text')?.value || '';
+          const noteDate = document.getElementById('edit-note-date')?.value || '';
+          if (!noteText.trim()) {
+            showToast('Escribe algo antes de guardar');
+            return;
+          }
+          try {
+            const note = await DB.getNote(Number(noteId));
+            note.text = noteText;
+            note.createdAt = noteDate ? new Date(noteDate).toISOString() : note.createdAt;
+            await DB.updateNote(note);
+            closeModal();
+            showToast('Nota actualizada ✅');
+            await navigate(`#pot/${note.potId}`);
+          } catch(e) {
+            showToast('Error al guardar: ' + e.message);
+          }
+        });
+      }
+      break;
+    }
+    case 'deleteNote': {
+      const noteId = target.dataset.noteId;
+      if (!confirm('¿Eliminar esta nota?')) break;
+      try {
+        const note = await DB.getNote(Number(noteId));
+        await DB.deleteNote(noteId);
+        closeModal();
+        showToast('Nota eliminada ✅');
+        await navigate(`#pot/${note.potId}`);
+      } catch(e) {
+        showToast('Error al eliminar: ' + e.message);
+      }
+      break;
+    }
+    case 'editAnalysis': {
+      const analysisId = target.dataset.analysisId;
+      modalsEl().innerHTML = await renderEditAnalysisModal(analysisId);
+      const form = document.getElementById('edit-analysis-form');
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const analysisDate = document.getElementById('edit-analysis-date')?.value || '';
+          const analysisDataStr = document.getElementById('edit-analysis-data')?.value || '{}';
+          try {
+            const analysis = await DB.getAnalysis(Number(analysisId));
+            analysis.createdAt = analysisDate ? new Date(analysisDate).toISOString() : analysis.createdAt;
+            try {
+              analysis.result = JSON.parse(analysisDataStr);
+            } catch(e) {
+              showToast('JSON inválido en datos del análisis');
+              return;
+            }
+            await DB.updateAnalysis(analysis);
+            closeModal();
+            showToast('Análisis actualizado ✅');
+            await navigate(`#pot/${analysis.potId}`);
+          } catch(e) {
+            showToast('Error al guardar: ' + e.message);
+          }
+        });
+      }
+      break;
+    }
+    case 'deleteAnalysis': {
+      const analysisId = target.dataset.analysisId;
+      if (!confirm('¿Eliminar este análisis?')) break;
+      try {
+        const analysis = await DB.getAnalysis(Number(analysisId));
+        await DB.deleteAnalysis(analysisId);
+        closeModal();
+        showToast('Análisis eliminado ✅');
+        await navigate(`#pot/${analysis.potId}`);
+      } catch(e) {
+        showToast('Error al eliminar: ' + e.message);
+      }
+      break;
+    }
+    case 'editDayItems': {
+      const dateKey = target.dataset.date;
+      // Need to get potId from current route
+      const hashMatch = window.location.hash.match(/#pot\/(\d+)/);
+      if (!hashMatch) break;
+      const potId = hashMatch[1];
+
+      // Get first item of the day and open its edit modal directly
+      const pot = await DB.getPot(Number(potId));
+      const photos = await DB.getPhotosByPot(potId);
+      const notes = await DB.getNotesByPot(potId);
+      const analyses = await DB.getAnalysesByPot(potId);
+
+      const photosInDate = photos.filter(p => p.createdAt.startsWith(dateKey));
+      const notesInDate = notes.filter(n => n.createdAt.startsWith(dateKey));
+      const analysesInDate = analyses.filter(a => a.createdAt.startsWith(dateKey));
+
+      // Open edit modal for first item found
+      if (photosInDate.length > 0) {
+        modalsEl().innerHTML = await renderEditPhotoModal(photosInDate[0].id);
+        setupEditPhotoForm();
+      } else if (notesInDate.length > 0) {
+        modalsEl().innerHTML = await renderEditNoteModal(notesInDate[0].id);
+        const form = document.getElementById('edit-note-form');
+        if (form) {
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const noteText = document.getElementById('edit-note-text')?.value || '';
+            const noteDate = document.getElementById('edit-note-date')?.value || '';
+            if (!noteText.trim()) {
+              showToast('Escribe algo antes de guardar');
+              return;
+            }
+            try {
+              const note = await DB.getNote(Number(notesInDate[0].id));
+              note.text = noteText;
+              note.createdAt = noteDate ? new Date(noteDate).toISOString() : note.createdAt;
+              await DB.updateNote(note);
+              closeModal();
+              showToast('Nota actualizada ✅');
+              await navigate(`#pot/${note.potId}`);
+            } catch(e) {
+              showToast('Error al guardar: ' + e.message);
+            }
+          });
+        }
+      } else if (analysesInDate.length > 0) {
+        modalsEl().innerHTML = await renderEditAnalysisModal(analysesInDate[0].id);
+        const form = document.getElementById('edit-analysis-form');
+        if (form) {
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const analysisDate = document.getElementById('edit-analysis-date')?.value || '';
+            const analysisDataStr = document.getElementById('edit-analysis-data')?.value || '{}';
+            try {
+              const analysis = await DB.getAnalysis(Number(analysesInDate[0].id));
+              analysis.createdAt = analysisDate ? new Date(analysisDate).toISOString() : analysis.createdAt;
+              try {
+                analysis.result = JSON.parse(analysisDataStr);
+              } catch(e) {
+                showToast('JSON inválido en datos del análisis');
+                return;
+              }
+              await DB.updateAnalysis(analysis);
+              closeModal();
+              showToast('Análisis actualizado ✅');
+              await navigate(`#pot/${analysis.potId}`);
+            } catch(e) {
+              showToast('Error al guardar: ' + e.message);
+            }
+          });
+        }
+      }
       break;
     }
     case 'capturePhoto': {

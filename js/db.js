@@ -171,9 +171,19 @@ const DB = {
     return snap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
   },
 
+  async getAnalysis(id) {
+    const snap = await getDoc(docRef('analyses', Number(id)));
+    if (!snap.exists()) return undefined;
+    return snap.data();
+  },
+
   async updateAnalysis(analysis) {
     await setDoc(docRef('analyses', analysis.id), analysis);
     return analysis;
+  },
+
+  async deleteAnalysis(id) {
+    await deleteDoc(docRef('analyses', Number(id)));
   },
 
   async getAnalysesByPot(potId) {
@@ -267,6 +277,44 @@ const DB = {
     await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
   },
 
+  // ===== NOTES =====
+  async addNote(note) {
+    const id = generateId();
+    const data = {
+      id,
+      potId: Number(note.potId),
+      text: note.text,
+      createdAt: note.createdAt || new Date().toISOString()
+    };
+    await setDoc(docRef('notes', id), data);
+    return data;
+  },
+
+  async getNote(id) {
+    const snap = await getDoc(docRef('notes', Number(id)));
+    if (!snap.exists()) return undefined;
+    return snap.data();
+  },
+
+  async getNotesByPot(potId) {
+    const snap = await getDocs(query(col('notes'), where('potId', '==', Number(potId))));
+    return snap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  async getAllNotes() {
+    const snap = await getDocs(query(col('notes')));
+    return snap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  async updateNote(note) {
+    await setDoc(docRef('notes', note.id), note);
+    return note;
+  },
+
+  async deleteNote(id) {
+    await deleteDoc(docRef('notes', id));
+  },
+
   // ===== TASK STATUS HELPER =====
   async getTaskStatus(potId, product) {
     const pot = await this.getPot(Number(potId));
@@ -294,7 +342,7 @@ const DB = {
 
   // ===== CLEAR ALL =====
   async clearAllData() {
-    for (const c of ['pots', 'photos', 'analyses', 'taskLogs', 'settings', 'products']) {
+    for (const c of ['pots', 'photos', 'analyses', 'taskLogs', 'settings', 'products', 'notes']) {
       const snap = await getDocs(col(c));
       await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
     }

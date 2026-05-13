@@ -100,6 +100,7 @@ export async function renderPot(potId) {
   const pot = await DB.getPot(Number(potId));
   if (!pot) return '<div class="empty-state"><div class="empty-icon">❓</div><p>Maceta no encontrada</p></div>';
   const photos = await DB.getPhotosByPot(pot.id);
+  const notes = await DB.getNotesByPot(pot.id);
   const analyses = await DB.getAnalysesByPot(pot.id);
   let summaryHtml = '';
   if (analyses && analyses.length > 0) {
@@ -170,8 +171,8 @@ export async function renderPot(potId) {
     }
   }
   let content = '';
-  if (photos.length === 0) {
-    content = `<div class="empty-state"><div class="empty-icon">📷</div><p>Aún no hay fotos. Toma una foto de tu planta o del analizador de suelo.</p></div>`;
+  if (photos.length === 0 && notes.length === 0) {
+    content = `<div class="empty-state"><div class="empty-icon">📷</div><p>Aún no hay fotos ni notas. Toma una foto o escribe una nota sobre tu planta.</p></div>`;
   } else {
     // Fetch all photo URLs and analyses in parallel
     const [photoUrls, photoAnalyses] = await Promise.all([
@@ -180,19 +181,96 @@ export async function renderPot(potId) {
     ]);
     const photoMap = {};
     photos.forEach((p, i) => { photoMap[p.id] = { url: photoUrls[i], analysis: photoAnalyses[i] }; });
+
+    // Combine photos, notes and analyses into a single timeline
+    const allItems = [];
+    for (const p of photos) { allItems.push({ type: 'photo', data: p }); }
+    for (const n of notes) { allItems.push({ type: 'note', data: n }); }
+    for (const a of analyses) { allItems.push({ type: 'analysis', data: a }); }
+    allItems.sort((a, b) => new Date(b.data.createdAt) - new Date(a.data.createdAt));
+
     const groups = {};
-    for (const p of photos) { const k = dateKey(p.createdAt); if(!groups[k]) groups[k]=[]; groups[k].push(p); }
+    for (const item of allItems) {
+      const k = dateKey(item.data.createdAt);
+      if(!groups[k]) groups[k]=[];
+      groups[k].push(item);
+    }
+
     for (const date of Object.keys(groups).sort((a,b)=>b.localeCompare(a))) {
-      const dp = groups[date];
-      content += `<div class="timeline-date">${formatDate(dp[0].createdAt)}</div><div class="photos-grid">`;
-      for (const photo of dp) {
+      const dateItems = groups[date];
+
+      let photosHtml = '';
+      let notesHtml = '';
+      let analysisText = '';
+
+      // Get photos for this date
+      const photosInDate = dateItems.filter(i => i.type === 'photo');
+      for (const item of photosInDate) {
+        const photo = item.data;
         const { url, analysis } = photoMap[photo.id];
-        let bc = photo.type==='analyzer'?'badge-analyzer':'badge-plant';
-        let bt = photo.type==='analyzer'?'📊 Suelo':'🌿 Planta';
-        if (!analysis && photo.type!=='analyzer') { bc='badge-pending'; bt='⏳ Pendiente'; }
-        content += `<div class="photo-thumb" data-action="viewPhoto" data-photo-id="${photo.id}" id="photo-${photo.id}"><img src="${url}" alt="Foto" loading="lazy"><span class="photo-badge ${bc}">${bt}</span></div>`;
+
+        let photoLabel = '';
+        if (photo.userNotes) {
+          photoLabel = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">📝 ${escapeHtml(photo.userNotes.substring(0, 15))}</div>`;
+        }
+
+        photosHtml += `<div style="display:flex;flex-direction:column;align-items:center"><img src="${url}" alt="Foto" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border-glass)" data-action="viewPhoto" data-photo-id="${photo.id}">${photoLabel}</div>`;
+
+        // Extract analysis text from first photo analysis
+        if (analysis && analysis.result && !analysisText) {
+          const r = analysis.result;
+          let parts = [];
+
+          if (r.healthStatus) {
+            const statusEmoji = { healthy: '🟢', warning: '🟡', danger: '🔴' };
+            const statusLabel = { healthy: 'Sana', warning: 'Atención', danger: 'Problema' };
+            const e = statusEmoji[r.healthStatus] || '⚪';
+            const l = statusLabel[r.healthStatus] || r.healthStatus;
+            parts.push(`${e} ${l}${r.healthScore ? ' (' + r.healthScore + '/10)' : ''}`);
+
+            if (r.issues && r.issues.length > 0) {
+              parts.push('⚠️ ' + r.issues.map(i => escapeHtml(i.name || i.type)).join(', '));
+            }
+          }
+
+          if (r.humidity && r.humidity !== 'N/A') {
+            parts.push(`💧 Humedad: ${escapeHtml(r.humidity)}%`);
+          }
+          if (r.ph && r.ph !== 'N/A') {
+            parts.push(`⚗️ pH: ${escapeHtml(r.ph)}`);
+          }
+          if (r.temperature && r.temperature !== 'N/A') {
+            parts.push(`🌡️ ${escapeHtml(r.temperature)}`);
+          }
+          if (r.notes) {
+            parts.push(`📌 ${escapeHtml(r.notes.substring(0, 40))}`);
+          }
+
+          analysisText = parts.join(' · ');
+        }
       }
-      content += '</div>';
+
+      // Get notes for this date
+      const notesInDate = dateItems.filter(i => i.type === 'note');
+      for (const item of notesInDate) {
+        const note = item.data;
+        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);min-height:80px;display:flex;align-items:center;word-wrap:break-word;white-space:normal;overflow-wrap:break-word">📝 ${escapeHtml(note.text)}</div>`;
+      }
+
+      // Only show if there are photos or notes (skip empty days)
+      if (photosInDate.length > 0 || notesInDate.length > 0) {
+        content += `<div class="glass-card mb-16" style="padding:12px">
+          <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
+            <div style="display:flex;gap:8px">${photosHtml}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)">${analysisText}</div>` : ''}
+              ${notesHtml}
+            </div>
+            <button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:center">✏️</button>
+          </div>
+        </div>`;
+      }
     }
   }
   const plantTypes = (pot.plantTypes || (pot.plantType ? [pot.plantType] : [])).map(cleanPlantName).filter(Boolean);
@@ -363,8 +441,8 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
-      const recommendedLabel = (isRecommended && ts.label !== 'Pendiente') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500">Recomendado</span>` : '';
-      rows += `<div class="task-row">${recommendedLabel}<span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}" style="margin-left:auto"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div>`;
+      const recommendedLabel = (isRecommended && ts.label !== 'Pendiente' && ts.label !== 'Recomendado') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500;margin-right:8px">Recomendado iA</span>` : '';
+      rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><div style="margin-left:auto;display:flex;align-items:center;gap:8px">${recommendedLabel}<button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div></div>`;
     }
 
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
@@ -450,12 +528,87 @@ export function renderPotModal(pot = null) {
 }
 
 export function renderPhotoModal(potId) {
-  return `<div class="modal-overlay" data-action="closeModal" id="photo-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">¿Qué vas a fotografiar?</div><div class="flex flex-col gap-8" style="margin-top:8px"><button class="btn btn-secondary btn-block" data-action="selectPhotoType" data-pot-id="${potId}" data-photo-type="plant">🌿 Planta</button><button class="btn btn-secondary btn-block" data-action="selectPhotoType" data-pot-id="${potId}" data-photo-type="analyzer">📊 Analizador de suelo</button></div></div></div>`;
+  return `<div class="modal-overlay" data-action="closeModal" id="photo-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">¿Qué vas a fotografiar?</div><div class="flex flex-col gap-8" style="margin-top:8px"><button class="btn btn-secondary btn-block" data-action="selectPhotoType" data-pot-id="${potId}" data-photo-type="plant">🌿 Planta</button><button class="btn btn-secondary btn-block" data-action="selectPhotoType" data-pot-id="${potId}" data-photo-type="analyzer">📊 Analizador de suelo</button><button class="btn btn-secondary btn-block" data-action="openNotesModal" data-pot-id="${potId}">📝 Notas</button></div></div></div>`;
 }
 
 export function renderPhotoSourceModal(potId, photoType) {
   const label = photoType === 'analyzer' ? 'Analizador de suelo' : 'Planta';
   return `<div class="modal-overlay" data-action="closeModal" id="photo-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📷 ${label}</div><div class="flex flex-col gap-8" style="margin-top:8px"><button class="btn btn-secondary btn-block" data-action="capturePhoto" data-pot-id="${potId}" data-photo-type="${photoType}" id="capture-btn">📸 Tomar Foto</button><button class="btn btn-secondary btn-block" data-action="uploadPhoto" data-pot-id="${potId}" data-photo-type="${photoType}" id="upload-btn">🖼️ Subir desde el dispositivo</button></div></div></div>`;
+}
+
+export function renderNotesModal(potId) {
+  return `<div class="modal-overlay" data-action="closeModal" id="notes-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📝 Agregar Nota</div><div class="form-group" style="margin-top:16px"><textarea class="form-input" id="new-note-text" placeholder="Escribe tus observaciones sobre el jardín..." style="min-height:120px"></textarea></div><div class="flex gap-8"><button class="btn btn-secondary btn-block" data-action="closeModal">Cancelar</button><button class="btn btn-primary btn-block" data-action="saveNote" data-pot-id="${potId}" id="save-note-btn">💾 Guardar Nota</button></div></div></div>`;
+}
+
+export async function renderEditNoteModal(noteId) {
+  const note = await DB.getNote(noteId);
+  if (!note) return '';
+  return `<div class="modal-overlay" data-action="closeModal" id="edit-note-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">✏️ Editar Nota</div><form id="edit-note-form" data-note-id="${note.id}"><div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="datetime-local" id="edit-note-date" value="${note.createdAt.slice(0,16)}"></div><div class="form-group"><label class="form-label">Nota</label><textarea class="form-input" id="edit-note-text" style="min-height:120px">${escapeHtml(note.text)}</textarea></div><div class="flex gap-8"><button type="button" class="btn btn-danger btn-block" data-action="deleteNote" data-note-id="${note.id}" id="delete-note-btn">🗑️ Eliminar</button><button type="submit" class="btn btn-primary btn-block" id="save-note-edit-btn">💾 Guardar Cambios</button></form></div></div></div>`;
+}
+
+export async function renderEditAnalysisModal(analysisId) {
+  const analysis = await DB.getAnalysis(Number(analysisId));
+  if (!analysis) return '';
+  const result = analysis.result || {};
+  const analysisText = JSON.stringify(result, null, 2);
+  const typeMap = { plant: 'Análisis Planta', analyzer: 'Análisis Suelo', soil: 'Análisis Suelo' };
+  const typeName = typeMap[analysis.type] || 'Análisis';
+  return `<div class="modal-overlay" data-action="closeModal" id="edit-analysis-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">✏️ Editar ${typeName}</div><form id="edit-analysis-form" data-analysis-id="${analysis.id}"><div class="form-group"><label class="form-label">Fecha</label><input class="form-input" type="datetime-local" id="edit-analysis-date" value="${analysis.createdAt.slice(0,16)}"></div><div class="form-group"><label class="form-label">Datos del Análisis (JSON)</label><textarea class="form-input" id="edit-analysis-data" style="min-height:200px;font-family:monospace;font-size:0.75rem">${escapeHtml(analysisText)}</textarea></div><div class="flex gap-8"><button type="button" class="btn btn-danger btn-block" data-action="deleteAnalysis" data-analysis-id="${analysis.id}" id="delete-analysis-btn">🗑️ Eliminar</button><button type="submit" class="btn btn-primary btn-block" id="save-analysis-edit-btn">💾 Guardar Cambios</button></form></div></div></div>`;
+}
+
+export async function renderEditDayModal(potId, dateKey) {
+  const pot = await DB.getPot(Number(potId));
+  const photos = await DB.getPhotosByPot(potId);
+  const notes = await DB.getNotesByPot(potId);
+  const analyses = await DB.getAnalysesByPot(potId);
+
+  // Filter by date
+  const dateStr = dateKey;
+  const photosInDate = photos.filter(p => p.createdAt.startsWith(dateStr));
+  const notesInDate = notes.filter(n => n.createdAt.startsWith(dateStr));
+  const analysesInDate = analyses.filter(a => a.createdAt.startsWith(dateStr));
+
+  let itemsHtml = '';
+
+  // Photos
+  for (const photo of photosInDate) {
+    const url = await getPhotoURL(photo);
+    itemsHtml += `<div style="background:var(--bg-secondary);padding:10px;border-radius:8px;border:1px solid var(--border-glass);margin-bottom:8px">
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">📷 Foto - ${photo.type === 'analyzer' ? 'Suelo' : 'Planta'}</div>
+      <img src="${url}" alt="Foto" style="width:100%;max-width:200px;border-radius:6px;margin-bottom:6px">
+      <button type="button" class="btn btn-secondary btn-sm" data-action="editPhoto" data-photo-id="${photo.id}" onclick="event.preventDefault()">✏️ Editar</button>
+    </div>`;
+  }
+
+  // Notes
+  for (const note of notesInDate) {
+    itemsHtml += `<div style="background:var(--bg-secondary);padding:10px;border-radius:8px;border:1px solid var(--border-glass);margin-bottom:8px">
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">📝 Nota</div>
+      <div style="font-size:0.85rem;color:var(--text-primary);margin-bottom:6px">${escapeHtml(note.text)}</div>
+      <button type="button" class="btn btn-secondary btn-sm" data-action="editNote" data-note-id="${note.id}" onclick="event.preventDefault()">✏️ Editar</button>
+    </div>`;
+  }
+
+  // Analyses
+  for (const analysis of analysesInDate) {
+    const r = analysis.result || {};
+    let analysisInfo = `<div style="font-size:0.85rem;color:var(--text-primary);margin-bottom:6px">`;
+    if (r.healthStatus) {
+      const statusLabel = { healthy: 'Sana', warning: 'Atención', danger: 'Problema' };
+      analysisInfo += `${statusLabel[r.healthStatus] || r.healthStatus}${r.healthScore ? ' (' + r.healthScore + '/10)' : ''}`;
+    } else {
+      analysisInfo += 'Análisis de Suelo';
+    }
+    analysisInfo += `</div>`;
+
+    itemsHtml += `<div style="background:var(--bg-secondary);padding:10px;border-radius:8px;border:1px solid var(--border-glass);margin-bottom:8px">
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">${analysis.type === 'plant' ? '🌿' : '📊'} Análisis</div>
+      ${analysisInfo}
+      <button type="button" class="btn btn-secondary btn-sm" data-action="editAnalysis" data-analysis-id="${analysis.id}" onclick="event.preventDefault()">✏️ Editar</button>
+    </div>`;
+  }
+
+  return `<div class="modal-overlay" data-action="closeModal" id="edit-day-modal"><div class="modal-content" style="max-height:80vh;overflow-y:auto"><div class="modal-handle"></div><div class="modal-title">✏️ Editar ${formatDate(photosInDate[0]?.createdAt || notesInDate[0]?.createdAt || analysesInDate[0]?.createdAt)}</div>${itemsHtml || '<div class="empty-state">Sin items en este día</div>'}</div></div>`;
 }
 
 export async function renderEditPhotoModal(photoId) {
@@ -779,6 +932,175 @@ export function renderProductDateModal(potId, productSlug, lastDate) {
       <button class="btn btn-primary btn-block" data-action="saveProductDate" data-pot-id="${potId}" data-product-slug="${productSlug}" style="margin-top:12px">💾 Guardar</button>
     </div>
   </div>`;
+}
+
+// ===== STATS VIEW =====
+export async function renderStats() {
+  const pots = await DB.getAllPots();
+  if (pots.length === 0) {
+    return `<div class="empty-state"><div class="empty-icon">📊</div><p>Agrega macetas para ver las estadísticas de tu jardín.</p></div>`;
+  }
+
+  // Fetch all photos, notes, and analyses from all pots
+  const [photosArr, notesArr, analysesArr] = await Promise.all([
+    Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
+    Promise.all(pots.map(p => DB.getNotesByPot(p.id))),
+    Promise.all(pots.map(p => DB.getAnalysesByPot(p.id)))
+  ]);
+
+  // Create a map of pot IDs to pot data for easy reference
+  const potMap = {};
+  pots.forEach(pot => { potMap[pot.id] = pot; });
+
+  // Fetch all photo URLs and analyses in parallel
+  let allPhotos = [];
+  photosArr.forEach((photos, i) => {
+    photos.forEach(photo => { allPhotos.push({ ...photo, potId: pots[i].id }); });
+  });
+
+  const photoUrls = await Promise.all(allPhotos.map(p => getPhotoURL(p)));
+  const photoAnalyses = await Promise.all(allPhotos.map(p => DB.getAnalysisByPhoto(p.id)));
+
+  const photoMap = {};
+  allPhotos.forEach((p, i) => {
+    photoMap[p.id] = { url: photoUrls[i], analysis: photoAnalyses[i] };
+  });
+
+  // Combine all photos, notes, and analyses into a single timeline
+  const allItems = [];
+
+  photosArr.forEach((photos, i) => {
+    photos.forEach(p => {
+      allItems.push({ type: 'photo', data: { ...p, potId: pots[i].id }, potIndex: i });
+    });
+  });
+
+  notesArr.forEach((notes, i) => {
+    notes.forEach(n => {
+      allItems.push({ type: 'note', data: { ...n, potId: pots[i].id }, potIndex: i });
+    });
+  });
+
+  analysesArr.forEach((analyses, i) => {
+    analyses.forEach(a => {
+      allItems.push({ type: 'analysis', data: { ...a, potId: pots[i].id }, potIndex: i });
+    });
+  });
+
+  // Sort by date (descending)
+  allItems.sort((a, b) => new Date(b.data.createdAt) - new Date(a.data.createdAt));
+
+  // Group by date
+  const groups = {};
+  for (const item of allItems) {
+    const k = dateKey(item.data.createdAt);
+    if(!groups[k]) groups[k] = [];
+    groups[k].push(item);
+  }
+
+  let content = '';
+  const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  for (const date of sortedDates) {
+    const dateItems = groups[date];
+
+    // Organize items by pot for this date
+    const potGroups = {};
+    for (const item of dateItems) {
+      const potId = item.data.potId;
+      if (!potGroups[potId]) potGroups[potId] = [];
+      potGroups[potId].push(item);
+    }
+
+    // Build content for each pot that has items on this date
+    let dayContent = '';
+    for (const potId of Object.keys(potGroups).sort((a, b) => Number(a) - Number(b))) {
+      const potItems = potGroups[potId];
+      const pot = potMap[potId];
+
+      let photosHtml = '';
+      let notesHtml = '';
+      let analysisText = '';
+
+      // Get photos for this pot on this date
+      const photosInDate = potItems.filter(i => i.type === 'photo');
+      for (const item of photosInDate) {
+        const photo = item.data;
+        const { url, analysis } = photoMap[photo.id];
+
+        let photoLabel = '';
+        if (photo.userNotes) {
+          photoLabel = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">📝 ${escapeHtml(photo.userNotes.substring(0, 15))}</div>`;
+        }
+
+        photosHtml += `<div style="display:flex;flex-direction:column;align-items:center"><img src="${url}" alt="Foto" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border-glass)" data-action="viewPhoto" data-photo-id="${photo.id}">${photoLabel}</div>`;
+
+        // Extract analysis text from first photo analysis
+        if (analysis && analysis.result && !analysisText) {
+          const r = analysis.result;
+          let parts = [];
+
+          if (r.healthStatus) {
+            const statusEmoji = { healthy: '🟢', warning: '🟡', danger: '🔴' };
+            const statusLabel = { healthy: 'Sana', warning: 'Atención', danger: 'Problema' };
+            const e = statusEmoji[r.healthStatus] || '⚪';
+            const l = statusLabel[r.healthStatus] || r.healthStatus;
+            parts.push(`${e} ${l}${r.healthScore ? ' (' + r.healthScore + '/10)' : ''}`);
+
+            if (r.issues && r.issues.length > 0) {
+              parts.push('⚠️ ' + r.issues.map(i => escapeHtml(i.name || i.type)).join(', '));
+            }
+          }
+
+          if (r.humidity && r.humidity !== 'N/A') {
+            parts.push(`💧 Humedad: ${escapeHtml(r.humidity)}%`);
+          }
+          if (r.ph && r.ph !== 'N/A') {
+            parts.push(`⚗️ pH: ${escapeHtml(r.ph)}`);
+          }
+          if (r.temperature && r.temperature !== 'N/A') {
+            parts.push(`🌡️ ${escapeHtml(r.temperature)}`);
+          }
+          if (r.notes) {
+            parts.push(`📌 ${escapeHtml(r.notes.substring(0, 40))}`);
+          }
+
+          analysisText = parts.join(' · ');
+        }
+      }
+
+      // Get notes for this pot on this date
+      const notesInDate = potItems.filter(i => i.type === 'note');
+      for (const item of notesInDate) {
+        const note = item.data;
+        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);min-height:80px;display:flex;align-items:center;word-wrap:break-word;white-space:normal;overflow-wrap:break-word">📝 ${escapeHtml(note.text)}</div>`;
+      }
+
+      // Only show if there are photos or notes (skip empty entries)
+      if (photosInDate.length > 0 || notesInDate.length > 0) {
+        dayContent += `<div style="padding:8px;border-left:2px solid var(--accent);margin-bottom:12px;padding-left:12px">
+          <div style="font-size:0.75rem;color:var(--accent);font-weight:600;margin-bottom:8px">${escapeHtml(pot.emoji || '🪴')} ${escapeHtml(pot.name)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
+            <div style="display:flex;gap:8px">${photosHtml}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)">${analysisText}</div>` : ''}
+              ${notesHtml}
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+
+    // Only show the date card if there's content
+    if (dayContent) {
+      content += `<div class="glass-card mb-16" style="padding:12px">
+        <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
+        ${dayContent}
+      </div>`;
+    }
+  }
+
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">📊 Historial de tu jardín</div></div>${content || '<div class="empty-state"><p>No hay fotos ni notas aún. ¡Comienza a documentar tu jardín!</p></div>'}`;
 }
 
 // ===== TOAST =====

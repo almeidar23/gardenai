@@ -74,8 +74,11 @@ const GROQ_VISION_MODELS = [
 
 async function getGroqVisionModel(apiKey) {
   try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 8000); // 8s max for model list
     const resp = await fetch('https://api.groq.com/openai/v1/models', {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: ctrl.signal
     });
     if (!resp.ok) return GROQ_VISION_MODELS[0];
     const data = await resp.json();
@@ -112,16 +115,21 @@ async function callGroq(base64Image, prompt) {
 
   let resp;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000); // 45s timeout
     resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: controller.signal
     });
+    clearTimeout(timeout);
   } catch(netErr) {
-    throw new Error(`Sin conexión a Groq (${netErr.message}). Verifica tu internet o cambia a Gemini en Ajustes.`);
+    if (netErr.name === 'AbortError') throw new Error('Groq tardó demasiado (>45s). Intenta de nuevo o usa Gemini en Ajustes.');
+    throw new Error(`Sin conexión a Groq. Verifica tu internet o cambia a Gemini en Ajustes.`);
   }
 
   if (!resp.ok) {

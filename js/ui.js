@@ -85,8 +85,10 @@ export async function renderHome() {
     const plantTypes = (pot.plantTypes || (pot.plantType ? [pot.plantType] : [])).map(cleanPlantName).filter(Boolean);
     const plantTypeHtml = plantTypes.length ? `<div class="pot-plant-type">${escapeHtml(plantTypes.join(', '))}</div>` : '';
     potsHtml += `<div class="glass-card pot-card" data-navigate="pot/${pot.id}" id="pot-card-${pot.id}">
-      ${statusHtml ? `<div class="pot-status-badge">${statusHtml}</div>` : ''}
-      <div class="pot-count-badge">${photos.length} foto${photos.length!==1?'s':''}</div>
+      <div class="pot-top-bar">
+        ${statusHtml || '<span></span>'}
+        <span class="pot-count-badge">${photos.length} foto${photos.length!==1?'s':''}</span>
+      </div>
       ${thumbHtml}
       <div class="pot-name">${escapeHtml(pot.name)}</div>${plantTypeHtml}
     </div>`;

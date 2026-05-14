@@ -478,7 +478,7 @@ a { color: var(--accent); text-decoration: none; }
   gap: 6px;
   padding: 10px 10px 12px;
   text-align: center;
-  animation: slideUp 0.4s ease backwards;
+  animation: slideUp 0.4s ease both;
   transition: var(--transition);
 }
 
@@ -1057,7 +1057,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .task-pot-card {
   position: relative;
   margin-bottom: 14px;
-  animation: slideUp 0.4s ease backwards;
+  animation: slideUp 0.4s ease both;
 }
 
 .task-pot-card:hover {

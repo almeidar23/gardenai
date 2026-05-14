@@ -300,11 +300,12 @@ export async function renderPhotoDetail(photoId) {
   const switchType = photo.type === 'analyzer' ? 'plant' : 'analyzer';
   const switchLabel = photo.type === 'analyzer' ? '🌿 Cambiar a Planta' : '📊 Cambiar a Analizador';
   const analyzeLabel = photo.type === 'analyzer' ? 'Medidor' : 'Planta';
-  const reanalyzeBtns = `<div class="btn-group" style="margin-top:12px"><button class="btn btn-primary btn-block" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">🔄 Re-analizar ${analyzeLabel}</button><button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photo.id}" data-new-type="${switchType}">${switchLabel} y re-analizar</button></div>`;
   if (analysis && analysis.result) {
-    analysisHtml = (photo.type==='analyzer' ? renderSoilAnalysis(analysis.result) : renderPlantAnalysis(analysis.result)) + reanalyzeBtns;
+    analysisHtml = photo.type==='analyzer'
+      ? renderSoilAnalysis(analysis.result, photo.id, switchType, switchLabel)
+      : renderPlantAnalysis(analysis.result, photo.id, switchType, switchLabel);
   } else {
-    analysisHtml = `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis IA</h3></div><div class="btn-group"><button class="btn btn-primary btn-block" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">✨ Analizar ${analyzeLabel}</button><button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photo.id}" data-new-type="${switchType}">${switchLabel} y analizar</button></div></div>`;
+    analysisHtml = `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis IA</h3><button class="analysis-menu-btn" data-action="openAnalysisMenu" data-photo-id="${photo.id}" data-switch-type="${switchType}" data-switch-label="${escapeHtml(switchLabel)}">✏️</button></div><button class="btn btn-primary btn-block" style="margin-top:4px" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">✨ Analizar ${analyzeLabel}</button></div>`;
   }
   
   const navHtml = `
@@ -325,26 +326,42 @@ export async function renderPhotoDetail(photoId) {
   return `${navHtml}
     <img class="photo-detail-img" src="${url}" alt="Foto detalle">
     ${notesHtml}
-    ${analysisHtml}
-    <div class="photo-actions-row"><button class="btn btn-secondary btn-sm" data-action="editPhoto" data-photo-id="${photo.id}" id="edit-photo-btn">✏️ Editar</button><button class="btn btn-danger btn-sm" data-action="deletePhoto" data-photo-id="${photo.id}" id="delete-photo-btn">🗑️ Eliminar</button></div>`;
+    ${analysisHtml}`;
 }
 
-function renderPlantAnalysis(r) {
+function renderPlantAnalysis(r, photoId, switchType, switchLabel) {
   const sc = { healthy:'var(--success)', warning:'var(--warning)', danger:'var(--danger)' };
   const sl = { healthy:'🟢 Saludable', warning:'🟡 Atención', danger:'🔴 Problema' };
   let issues = '';
   if (r.issues?.length) { issues = '<div class="mt-8"><strong>Problemas:</strong></div><ul style="margin:6px 0 0 18px;font-size:0.8rem;color:var(--text-secondary)">'; for(const i of r.issues) issues+=`<li><strong>${escapeHtml(i.name||i.type)}</strong>: ${escapeHtml(i.description)} <em>(${i.severity})</em></li>`; issues+='</ul>'; }
   let recs = '';
   if (r.recommendations?.length) { recs = '<div class="mt-8"><strong>Recomendaciones:</strong></div><ul style="margin:6px 0 0 18px;font-size:0.8rem;color:var(--text-secondary)">'; for(const rc of r.recommendations) recs+=`<li>${escapeHtml(rc)}</li>`; recs+='</ul>'; }
-  return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis de Planta</h3></div><div class="analysis-body">${r.plantType?`<div><strong>Planta:</strong> ${escapeHtml(cleanPlantName(r.plantType))}</div>`:''}<div style="margin:8px 0;display:flex;align-items:center;gap:8px"><span style="color:${escapeHtml(sc[r.healthStatus]||'var(--text-secondary)')}">${escapeHtml(sl[r.healthStatus]||r.healthStatus)}</span>${r.healthScore?`<span style="font-size:0.75rem;color:var(--text-muted)">Puntuación: ${escapeHtml(r.healthScore)}/10</span>`:''}</div>${r.summary?`<p>${escapeHtml(r.summary)}</p>`:''}${r.sunRequirements?`<div class="mt-8"><strong>☀️ Sol:</strong> ${escapeHtml(r.sunRequirements)}</div>`:''}${r.waterRequirements?`<div><strong>💧 Riego:</strong> ${escapeHtml(r.waterRequirements)}</div>`:''}${issues}${recs}</div></div>`;
+  const menuBtn = photoId ? `<button class="analysis-menu-btn" data-action="openAnalysisMenu" data-photo-id="${photoId}" data-switch-type="${switchType}" data-switch-label="${escapeHtml(switchLabel||'')}">✏️</button>` : '';
+  return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis de Planta</h3>${menuBtn}</div><div class="analysis-body">${r.plantType?`<div><strong>Planta:</strong> ${escapeHtml(cleanPlantName(r.plantType))}</div>`:''}<div style="margin:8px 0;display:flex;align-items:center;gap:8px"><span style="color:${escapeHtml(sc[r.healthStatus]||'var(--text-secondary)')}">${escapeHtml(sl[r.healthStatus]||r.healthStatus)}</span>${r.healthScore?`<span style="font-size:0.75rem;color:var(--text-muted)">Puntuación: ${escapeHtml(r.healthScore)}/10</span>`:''}</div>${r.summary?`<p>${escapeHtml(r.summary)}</p>`:''}${r.sunRequirements?`<div class="mt-8"><strong>☀️ Sol:</strong> ${escapeHtml(r.sunRequirements)}</div>`:''}${r.waterRequirements?`<div><strong>💧 Riego:</strong> ${escapeHtml(r.waterRequirements)}</div>`:''}${issues}${recs}</div></div>`;
 }
 
-function renderSoilAnalysis(r) {
+function renderSoilAnalysis(r, photoId, switchType, switchLabel) {
   const params = [{key:'fertility',label:'Fertilidad',unit:'µ/cm²',icon:'🌱'},{key:'humidity',label:'Humedad Suelo',unit:'%',icon:'💧'},{key:'ph',label:'pH',unit:'',icon:'⚗️'},{key:'temperature',label:'Temperatura',unit:'°C',icon:'🌡️'},{key:'sunlight',label:'Luz Solar',unit:'',icon:'☀️'},{key:'ambientHumidity',label:'Humedad Amb.',unit:'%',icon:'🌫️'}];
   let ph = '<div class="soil-params">';
   for (const p of params) { const v=r[p.key]??'N/A'; ph+=`<div class="soil-param"><div class="param-label">${escapeHtml(p.icon)} ${escapeHtml(p.label)}</div><div class="param-value">${escapeHtml(v)}</div>${p.unit?`<div class="param-unit">${escapeHtml(p.unit)}</div>`:''}</div>`; }
   ph += '</div>';
-  return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">📊</span><h3>Datos del Suelo</h3></div>${ph}${r.confidence?`<div class="mt-8" style="font-size:0.75rem;color:var(--text-muted)">Confianza: ${escapeHtml(r.confidence)}</div>`:''}${r.notes?`<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">${escapeHtml(r.notes)}</div>`:''}</div>`;
+  const menuBtn = photoId ? `<button class="analysis-menu-btn" data-action="openAnalysisMenu" data-photo-id="${photoId}" data-switch-type="${switchType}" data-switch-label="${escapeHtml(switchLabel||'')}">✏️</button>` : '';
+  return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">📊</span><h3>Datos del Suelo</h3>${menuBtn}</div>${ph}${r.confidence?`<div class="mt-8" style="font-size:0.75rem;color:var(--text-muted)">Confianza: ${escapeHtml(r.confidence)}</div>`:''}${r.notes?`<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">${escapeHtml(r.notes)}</div>`:''}</div>`;
+}
+
+export function renderAnalysisActionsModal(photoId, switchType, switchLabel) {
+  return `<div class="modal-overlay" data-action="closeModal">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Opciones</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-secondary btn-block" data-action="analyzePhoto" data-photo-id="${photoId}">🔄 Re-analizar</button>
+        <button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photoId}" data-new-type="${switchType}">${escapeHtml(switchLabel)} y analizar</button>
+        <button class="btn btn-secondary btn-block" data-action="editPhoto" data-photo-id="${photoId}">✏️ Editar</button>
+        <button class="btn btn-danger btn-block" data-action="deletePhoto" data-photo-id="${photoId}">🗑️ Eliminar</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 export function mapIssuesToProducts(issues, soilData) {

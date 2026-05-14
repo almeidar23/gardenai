@@ -16,7 +16,8 @@ import {
   renderBulkDateModal, renderBulkNotesModal,
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
-  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts
+  showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
+  renderAnalysisActionsModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -618,6 +619,13 @@ async function handleAction(action, target) {
       clearPhotoSelection(); clearPhotoCache();
       showToast(`${ids.length} foto${ids.length!==1?'s':''} eliminada${ids.length!==1?'s':''} ✓`);
       navigate(window.location.hash);
+      break;
+    }
+    case 'openAnalysisMenu': {
+      const photoId = target.dataset.photoId;
+      const switchType = target.dataset.switchType;
+      const switchLabel = target.dataset.switchLabel;
+      modalsEl().innerHTML = renderAnalysisActionsModal(photoId, switchType, switchLabel);
       break;
     }
     case 'analyzePhoto': { await runAnalysis(Number(target.dataset.photoId)); break; }

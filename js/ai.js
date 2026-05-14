@@ -167,6 +167,35 @@ async function callGroq(base64Image, prompt) {
 }
 
 /**
+ * Call AI with automatic fallback between Gemini and Groq.
+ * If the preferred provider fails with a rate limit or network error,
+ * it automatically retries with the other provider.
+ */
+async function callAI(base64Image, prompt) {
+  const provider = await DB.getSetting('aiProvider') || 'gemini';
+  const primary   = provider === 'groq' ? callGroq   : callGemini;
+  const secondary = provider === 'groq' ? callGemini : callGroq;
+
+  try {
+    return await primary(base64Image, prompt);
+  } catch(err) {
+    const isRateLimit = err.message.includes('alcanzado') || err.message.includes('429');
+    const isNetwork   = err.message.includes('conexión') || err.message.includes('tardó');
+    if (isRateLimit || isNetwork) {
+      const fallbackName = provider === 'groq' ? 'Gemini' : 'Groq';
+      try {
+        const result = await secondary(base64Image, prompt);
+        console.warn(`[AI] Switched to ${fallbackName} (primary failed: ${err.message})`);
+        return result;
+      } catch(err2) {
+        throw new Error(`${err.message} | Fallback ${fallbackName} también falló: ${err2.message}`);
+      }
+    }
+    throw err;
+  }
+}
+
+/**
  * Analyze a plant photo.
  * @param {Blob} imageBlob
  * @param {object|null} soilData - optional soil analyzer data for combined analysis
@@ -210,18 +239,10 @@ Incorpora estos datos en tu análisis y recomendaciones.`;
 ${soilContext}
 Si no puedes identificar la planta con certeza, indica tu mejor estimación. Sé específico y práctico en las recomendaciones.`;
 
-  const provider = await DB.getSetting('aiProvider') || 'gemini';
-  let responseText = '';
-  if (provider === 'groq') {
-    responseText = await callGroq(base64, prompt);
-  } else {
-    responseText = await callGemini(base64, prompt);
-  }
-
+  const responseText = await callAI(base64, prompt);
   try {
     return JSON.parse(responseText);
   } catch {
-    // Try extracting JSON from response
     const match = responseText.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     return { summary: responseText, healthStatus: 'warning', healthScore: 5, issues: [], recommendations: [] };
@@ -252,14 +273,7 @@ Lee y extrae los siguientes 6 parámetros del medidor. Si un parámetro no es vi
 
 Sé preciso al leer los números de la pantalla/indicadores.`;
 
-  const provider = await DB.getSetting('aiProvider') || 'gemini';
-  let responseText = '';
-  if (provider === 'groq') {
-    responseText = await callGroq(base64, prompt);
-  } else {
-    responseText = await callGemini(base64, prompt);
-  }
-
+  const responseText = await callAI(base64, prompt);
   try {
     return JSON.parse(responseText);
   } catch {

@@ -444,7 +444,7 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
-      const recommendedLabel = (isRecommended && ts.label !== 'Pendiente' && ts.label !== 'Recomendado') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500;margin-right:8px">Recomendado iA</span>` : '';
+      const recommendedLabel = (isRecommended && ts.label !== 'Pendiente' && ts.label !== 'Recomendado') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500;margin-right:8px">💡 IA</span>` : '';
       rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><div style="margin-left:auto;display:flex;align-items:center;gap:8px">${recommendedLabel}<button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div></div>`;
     }
 

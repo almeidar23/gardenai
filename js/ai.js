@@ -63,25 +63,36 @@ async function callGemini(base64Image, prompt) {
   return text;
 }
 
-async function callGroq(base64Image, prompt) {
-  const apiKey = await getApiKey('groq');
-  
-  // Dynamically fetch available models to avoid deprecation errors
-  let modelName = 'meta-llama/llama-4-scout-17b-16e-instruct'; // fallback
+// Groq vision model candidates in priority order
+const GROQ_VISION_MODELS = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+  'llama-3.2-90b-vision-preview',
+  'llama-3.2-11b-vision-preview',
+  'llava-v1.5-7b-4096-preview'
+];
+
+async function getGroqVisionModel(apiKey) {
   try {
-    const modelsResp = await fetch('https://api.groq.com/openai/v1/models', {
+    const resp = await fetch('https://api.groq.com/openai/v1/models', {
       headers: { 'Authorization': `Bearer ${apiKey}` }
     });
-    if (modelsResp.ok) {
-      const modelsData = await modelsResp.json();
-      const visionModels = modelsData.data.filter(m => m.id.includes('vision') || m.id.includes('scout'));
-      // Prefer Llama 4 Scout if available, else pick the first vision model
-      if (visionModels.length > 0) {
-        const preferred = visionModels.find(m => m.id.includes('llama-4-scout'));
-        modelName = preferred ? preferred.id : visionModels[0].id;
-      }
+    if (!resp.ok) return GROQ_VISION_MODELS[0];
+    const data = await resp.json();
+    const available = new Set(data.data.map(m => m.id));
+    for (const m of GROQ_VISION_MODELS) {
+      if (available.has(m)) return m;
     }
-  } catch(e) { /* use fallback */ }
+    // Try any vision/scout model from the API
+    const fallback = data.data.find(m => m.id.includes('vision') || m.id.includes('scout') || m.id.includes('llava'));
+    if (fallback) return fallback.id;
+  } catch(e) { /* ignore */ }
+  return GROQ_VISION_MODELS[0];
+}
+
+async function callGroq(base64Image, prompt) {
+  const apiKey = await getApiKey('groq');
+  const modelName = await getGroqVisionModel(apiKey);
 
   const body = {
     model: modelName,
@@ -99,18 +110,27 @@ async function callGroq(base64Image, prompt) {
     response_format: { type: "json_object" }
   };
 
-  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(body)
-  });
+  let resp;
+  try {
+    resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    });
+  } catch(netErr) {
+    throw new Error(`Sin conexión a Groq (${netErr.message}). Verifica tu internet o cambia a Gemini en Ajustes.`);
+  }
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Groq API error: ${resp.status}`);
+    const msg = err.error?.message || '';
+    if (resp.status === 401) throw new Error('API Key de Groq inválida. Revisa en Ajustes.');
+    if (resp.status === 429) throw new Error('Límite de Groq alcanzado. Espera un momento.');
+    if (msg.includes('model') || resp.status === 404) throw new Error(`Modelo Groq no disponible: ${modelName}`);
+    throw new Error(msg || `Groq error ${resp.status}`);
   }
 
   const data = await resp.json();
@@ -231,15 +251,7 @@ async function callVisionFree(blobOrDataUrl, prompt) {
   const apiKey = await getApiKey(provider);
 
   if (provider === 'groq') {
-    let modelName = 'meta-llama/llama-4-scout-17b-16e-instruct';
-    try {
-      const r = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } });
-      if (r.ok) {
-        const d = await r.json();
-        const vm = d.data.filter(m => m.id.includes('vision') || m.id.includes('scout'));
-        if (vm.length) { const p = vm.find(m => m.id.includes('llama-4-scout')); modelName = p ? p.id : vm[0].id; }
-      }
-    } catch(e) {}
+    const modelName = await getGroqVisionModel(apiKey);
     const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },

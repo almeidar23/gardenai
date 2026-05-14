@@ -3,7 +3,11 @@
 import DB from './db.js';
 import { compressForAI } from './camera.js';
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_MODELS = [
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-flash'
+];
 
 /**
  * Get the stored API key.
@@ -31,12 +35,7 @@ async function callGemini(base64Image, prompt) {
     contents: [{
       parts: [
         { text: prompt },
-        {
-          inline_data: {
-            mime_type: 'image/jpeg',
-            data: base64Image
-          }
-        }
+        { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
       ]
     }],
     generationConfig: {
@@ -46,21 +45,41 @@ async function callGemini(base64Image, prompt) {
     }
   };
 
-  const resp = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error?.message || `API error: ${resp.status}`);
+  // Try models in order until one works
+  let lastErr = new Error('No se pudo conectar a Gemini');
+  for (const model of GEMINI_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+      let resp;
+      try {
+        resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal }
+        );
+      } catch(netErr) {
+        clearTimeout(timeout);
+        if (netErr.name === 'AbortError') throw new Error('Gemini tardó demasiado. Intenta de nuevo.');
+        throw new Error('Sin conexión a Gemini. Verifica tu internet.');
+      }
+      clearTimeout(timeout);
+      if (resp.status === 404) { lastErr = new Error(`Modelo ${model} no disponible`); continue; }
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        if (resp.status === 401) throw new Error('API Key de Gemini inválida. Revisa en Ajustes.');
+        if (resp.status === 429) throw new Error('Límite de Gemini alcanzado. Espera un momento.');
+        throw new Error(err.error?.message || `Gemini error ${resp.status}`);
+      }
+      const data = await resp.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Respuesta vacía de Gemini');
+      return text;
+    } catch(e) {
+      if (!e.message.includes('no disponible')) throw e;
+      lastErr = e;
+    }
   }
-
-  const data = await resp.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Respuesta vacía de la API');
-  return text;
+  throw lastErr;
 }
 
 // Groq vision model candidates in priority order
@@ -191,7 +210,7 @@ Incorpora estos datos en tu análisis y recomendaciones.`;
 ${soilContext}
 Si no puedes identificar la planta con certeza, indica tu mejor estimación. Sé específico y práctico en las recomendaciones.`;
 
-  const provider = await DB.getSetting('aiProvider') || 'groq';
+  const provider = await DB.getSetting('aiProvider') || 'gemini';
   let responseText = '';
   if (provider === 'groq') {
     responseText = await callGroq(base64, prompt);
@@ -233,7 +252,7 @@ Lee y extrae los siguientes 6 parámetros del medidor. Si un parámetro no es vi
 
 Sé preciso al leer los números de la pantalla/indicadores.`;
 
-  const provider = await DB.getSetting('aiProvider') || 'groq';
+  const provider = await DB.getSetting('aiProvider') || 'gemini';
   let responseText = '';
   if (provider === 'groq') {
     responseText = await callGroq(base64, prompt);
@@ -255,7 +274,7 @@ Sé preciso al leer los números de la pantalla/indicadores.`;
  */
 async function callVisionFree(blobOrDataUrl, prompt) {
   const base64Image = await compressForAI(blobOrDataUrl);
-  const provider = await DB.getSetting('aiProvider') || 'groq';
+  const provider = await DB.getSetting('aiProvider') || 'gemini';
   const apiKey = await getApiKey(provider);
 
   if (provider === 'groq') {
@@ -308,7 +327,7 @@ export async function detectPhotoType(imageBlob) {
  */
 export async function isConfigured() {
   try {
-    const provider = await DB.getSetting('aiProvider') || 'groq';
+    const provider = await DB.getSetting('aiProvider') || 'gemini';
     await getApiKey(provider);
     return true;
   } catch {

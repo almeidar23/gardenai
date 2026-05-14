@@ -551,14 +551,17 @@ a { color: var(--accent); text-decoration: none; }
 
 .pot-card .pot-plant-type {
   font-size: 0.7rem;
+  line-height: 1.4;
   color: var(--text-muted);
   font-style: normal;
   margin-top: 0;
+  letter-spacing: 0.2px;
+  word-break: break-word;
+  width: 100%;
+  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
-  letter-spacing: 0.2px;
 }
 
 .pot-card:not(.pot-card-add) .pot-count {

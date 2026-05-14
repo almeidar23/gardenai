@@ -444,7 +444,7 @@ export async function renderTasks() {
   ]);
   products.sort((a, b) => a.name.localeCompare(b.name));
 
-  if (pots.length === 0) return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button></div><div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
+  if (pots.length === 0) return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
 
   const allLogs = await DB.getTaskLogsByPots(pots.map(p => Number(p.id)));
   let html = '';
@@ -468,7 +468,7 @@ export async function renderTasks() {
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
   }
 
-  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar">✅</button></div>${html}`;
+  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>${html}`;
 }
 
 // ===== PRODUCTS VIEW =====

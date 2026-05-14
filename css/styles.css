@@ -1246,6 +1246,13 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   box-shadow: 0 0 16px rgba(45, 212, 168, 0.6);
 }
 
+.select-all-active {
+  background: #16a34a !important;
+  color: white !important;
+  border-color: #16a34a !important;
+  box-shadow: 0 0 20px rgba(22, 163, 74, 0.75);
+}
+
 .task-row .btn-apply {
   padding: 5px 10px;
   font-size: 0.7rem;

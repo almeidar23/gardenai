@@ -206,17 +206,42 @@ async function handleAction(action, target) {
       break;
     }
     case 'enterPotSelectModeTask': {
-      taskSelectMode = !taskSelectMode;
-      const tbtn = document.getElementById('pot-select-task-btn');
-      if (tbtn) {
-        tbtn.textContent = taskSelectMode ? '✅' : '✅';
-        tbtn.classList.toggle('select-mode-active', taskSelectMode);
+      if (!taskSelectMode) {
+        // First click: enter selection mode
+        taskSelectMode = true;
+        showToast('Toca macetas para seleccionar');
+        updateTaskSelectAllBtn();
+      } else {
+        // Already in select mode: toggle select-all / deselect-all
+        const allIds = getAllTaskPotIds();
+        const allSelected = allIds.length > 0 && allIds.every(id => selectedPotsTask.has(id));
+        if (allSelected) {
+          // Deselect all (stay in select mode)
+          selectedPotsTask.clear();
+          document.querySelectorAll('[data-toggle-select="task"].pot-selected').forEach(el => {
+            el.classList.remove('pot-selected');
+            el.querySelector('.pot-select-check')?.classList.remove('checked');
+          });
+          document.getElementById('task-bulk-bar')?.remove();
+          showToast('Selección eliminada');
+        } else {
+          // Select all visible pots
+          for (const id of allIds) {
+            if (!selectedPotsTask.has(id)) {
+              selectedPotsTask.add(id);
+              const card = document.querySelector(`[data-toggle-select="task"][data-pot-id="${id}"]`);
+              card?.classList.add('pot-selected');
+              card?.querySelector('.pot-select-check')?.classList.add('checked');
+            }
+          }
+          updateTaskBulkBar();
+          showToast(`✅ ${allIds.length} maceta${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
+        }
+        updateTaskSelectAllBtn();
       }
-      if (!taskSelectMode) clearTaskPotSelection();
-      showToast(taskSelectMode ? 'Toca macetas para seleccionar' : 'Selección desactivada');
       break;
     }
-    case 'clearTaskSelection': { clearTaskPotSelection(); break; }
+    case 'clearTaskSelection': { taskSelectMode = false; clearTaskPotSelection(); break; }
     case 'bulkApplyProduct': {
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
@@ -1165,6 +1190,23 @@ async function exportAllData() {
 }
 
 // ===== TASK POT SELECTION =====
+
+function getAllTaskPotIds() {
+  return [...document.querySelectorAll('[data-toggle-select="task"]')].map(el => el.dataset.potId);
+}
+
+function updateTaskSelectAllBtn() {
+  const btn = document.getElementById('pot-select-task-btn');
+  if (!btn) return;
+  const allIds = getAllTaskPotIds();
+  const allSelected = taskSelectMode && allIds.length > 0 && allIds.every(id => selectedPotsTask.has(id));
+  const svgOutlined = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const svgFilled  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  btn.innerHTML = taskSelectMode ? svgFilled : svgOutlined;
+  btn.classList.toggle('select-mode-active', taskSelectMode && !allSelected);
+  btn.classList.toggle('select-all-active', allSelected);
+}
+
 function toggleTaskPotSelection(potId) {
   const id = String(potId);
   const card = document.querySelector(`[data-toggle-select="task"][data-pot-id="${id}"]`);
@@ -1180,6 +1222,7 @@ function toggleTaskPotSelection(potId) {
   }
   if (selectedPotsTask.size > 0) updateTaskBulkBar();
   else document.getElementById('task-bulk-bar')?.remove();
+  updateTaskSelectAllBtn();
 }
 
 function clearTaskPotSelection() {
@@ -1189,6 +1232,7 @@ function clearTaskPotSelection() {
     el.querySelector('.pot-select-check')?.classList.remove('checked');
   });
   document.getElementById('task-bulk-bar')?.remove();
+  updateTaskSelectAllBtn();
 }
 
 function updateTaskBulkBar() {

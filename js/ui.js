@@ -264,7 +264,7 @@ export async function renderPot(potId) {
       const notesInDate = dateItems.filter(i => i.type === 'note');
       for (const item of notesInDate) {
         const note = item.data;
-        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><span style="flex:1;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</span><button class="btn-icon-small" data-action="editNote" data-note-id="${note.id}" style="flex-shrink:0;opacity:0.55;padding:2px 4px" title="Editar nota">✏️</button></div></div>`;
+        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 32px 8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);position:relative"><p style="margin:0;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</p><button class="btn-icon-small" data-action="editNote" data-note-id="${note.id}" style="position:absolute;top:4px;right:4px;opacity:0.5" title="Editar nota">✏️</button></div>`;
       }
 
       // Get task logs for this date

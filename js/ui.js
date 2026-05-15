@@ -287,12 +287,8 @@ export async function renderPot(potId) {
       // Show if there are photos, notes, or task logs
       if (photosInDate.length > 0 || notesInDate.length > 0 || tasklogsInDate.length > 0) {
         const hasEditable = photosInDate.length > 0 || notesInDate.length > 0;
-        // Photos + analysis row (only when photos exist)
-        const photosRow = photosHtml ? `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;margin-bottom:${analysisText||notesHtml||tasklogsHtml?'8px':'0'}">
-            <div style="display:flex;gap:8px">${photosHtml}</div>
-            ${analysisText ? `<div style="flex:1;min-width:0;background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);word-break:break-word">${analysisText}</div>` : ''}
-            ${hasEditable ? `<button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:flex-start">✏️</button>` : ''}
-          </div>` : (hasEditable ? `<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}">✏️</button></div>` : '');
+        // Photos row + edit button (only when photos exist)
+        const photosRow = photosHtml ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-bottom:${analysisText||notesHtml||tasklogsHtml?'8px':'0'}">${photosHtml}${hasEditable ? `<button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:flex-start">✏️</button>` : ''}</div>${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);word-break:break-word;margin-bottom:8px">${analysisText}</div>` : ''}` : (hasEditable ? `<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}">✏️</button></div>` : '');
         content += `<div class="glass-card mb-16" style="padding:12px">
           <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
           ${photosRow}

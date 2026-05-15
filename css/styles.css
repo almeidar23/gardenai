@@ -335,9 +335,9 @@ a { color: var(--accent); text-decoration: none; }
 .header-settings-btn {
   background: none;
   border: none;
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 6px;
   border-radius: 8px;
   line-height: 1;
   opacity: 0.75;

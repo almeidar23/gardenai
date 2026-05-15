@@ -1,6 +1,6 @@
 // sw.js — Service Worker for GardenAI PWA
 
-const CACHE_NAME = 'gardenai-v64';
+const CACHE_NAME = 'gardenai-v65';
 const ASSETS = [
   './',
   './index.html',

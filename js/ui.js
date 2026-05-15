@@ -102,9 +102,15 @@ export async function renderHome() {
 export async function renderPot(potId) {
   const pot = await DB.getPot(Number(potId));
   if (!pot) return '<div class="empty-state"><div class="empty-icon">❓</div><p>Maceta no encontrada</p></div>';
-  const photos = await DB.getPhotosByPot(pot.id);
-  const notes = await DB.getNotesByPot(pot.id);
-  const analyses = await DB.getAnalysesByPot(pot.id);
+  const [photos, notes, analyses, taskLogs, allProducts] = await Promise.all([
+    DB.getPhotosByPot(pot.id),
+    DB.getNotesByPot(pot.id),
+    DB.getAnalysesByPot(pot.id),
+    DB.getTaskLogsByPot(pot.id),
+    DB.getAllProducts()
+  ]);
+  const productMap = {};
+  for (const p of allProducts) productMap[p.slug] = p;
   let summaryHtml = '';
   if (analyses && analyses.length > 0) {
     analyses.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -174,7 +180,7 @@ export async function renderPot(potId) {
     }
   }
   let content = '';
-  if (photos.length === 0 && notes.length === 0) {
+  if (photos.length === 0 && notes.length === 0 && taskLogs.length === 0) {
     content = `<div class="empty-state"><div class="empty-icon">📷</div><p>Aún no hay fotos ni notas. Toma una foto o escribe una nota sobre tu planta.</p></div>`;
   } else {
     // Fetch all photo URLs and analyses in parallel
@@ -185,11 +191,12 @@ export async function renderPot(potId) {
     const photoMap = {};
     photos.forEach((p, i) => { photoMap[p.id] = { url: photoUrls[i], analysis: photoAnalyses[i] }; });
 
-    // Combine photos, notes and analyses into a single timeline
+    // Combine photos, notes, analyses and task logs into a single timeline
     const allItems = [];
     for (const p of photos) { allItems.push({ type: 'photo', data: p }); }
     for (const n of notes) { allItems.push({ type: 'note', data: n }); }
     for (const a of analyses) { allItems.push({ type: 'analysis', data: a }); }
+    for (const l of taskLogs) { allItems.push({ type: 'tasklog', data: { ...l, createdAt: l.appliedAt } }); }
     allItems.sort((a, b) => new Date(b.data.createdAt) - new Date(a.data.createdAt));
 
     const groups = {};
@@ -260,8 +267,26 @@ export async function renderPot(potId) {
         notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);min-height:80px;display:flex;align-items:center;word-wrap:break-word;white-space:normal;overflow-wrap:break-word">📝 ${escapeHtml(note.text)}</div>`;
       }
 
-      // Only show if there are photos or notes (skip empty days)
-      if (photosInDate.length > 0 || notesInDate.length > 0) {
+      // Get task logs for this date
+      const tasklogsInDate = dateItems.filter(i => i.type === 'tasklog');
+      let tasklogsHtml = '';
+      if (tasklogsInDate.length > 0) {
+        const seenSlugs = new Set();
+        const productNames = [];
+        for (const item of tasklogsInDate) {
+          const slug = item.data.productSlug;
+          if (!seenSlugs.has(slug)) {
+            seenSlugs.add(slug);
+            const prod = productMap[slug];
+            productNames.push(prod ? `${escapeHtml(prod.icon)} ${escapeHtml(prod.name)}` : escapeHtml(slug));
+          }
+        }
+        tasklogsHtml = `<div style="background:rgba(45,212,168,0.08);padding:8px 12px;border-radius:12px;border:1px solid rgba(45,212,168,0.25);font-size:0.8rem;color:var(--text-primary)">✅ Aplicado: ${productNames.join(' · ')}</div>`;
+      }
+
+      // Show if there are photos, notes, or task logs
+      if (photosInDate.length > 0 || notesInDate.length > 0 || tasklogsInDate.length > 0) {
+        const hasEditable = photosInDate.length > 0 || notesInDate.length > 0;
         content += `<div class="glass-card mb-16" style="padding:12px">
           <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
@@ -269,8 +294,9 @@ export async function renderPot(potId) {
             <div style="flex:1;display:flex;flex-direction:column;gap:8px">
               ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)">${analysisText}</div>` : ''}
               ${notesHtml}
+              ${tasklogsHtml}
             </div>
-            <button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:center">✏️</button>
+            ${hasEditable ? `<button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:center">✏️</button>` : ''}
           </div>
         </div>`;
       }

@@ -291,8 +291,8 @@ export async function renderPot(potId) {
           <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
             <div style="display:flex;gap:8px">${photosHtml}</div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)">${analysisText}</div>` : ''}
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);word-break:break-word">${analysisText}</div>` : ''}
               ${notesHtml}
               ${tasklogsHtml}
             </div>

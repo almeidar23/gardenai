@@ -1035,8 +1035,12 @@ function setupEditPhotoForm() {
       } catch(err) { showToast('JSON de análisis inválido'); return; }
     }
     closeModal(); clearPhotoCache(); showToast('Cambios guardados ✓');
-    mainEl().innerHTML = await renderPhotoDetail(photoId);
-    initPhotoZoom();
+    if (currentRoute === 'photo') {
+      mainEl().innerHTML = await renderPhotoDetail(photoId);
+      initPhotoZoom();
+    } else {
+      mainEl().innerHTML = await renderPot(photo.potId);
+    }
   });
 }
 

@@ -264,7 +264,7 @@ export async function renderPot(potId) {
       const notesInDate = dateItems.filter(i => i.type === 'note');
       for (const item of notesInDate) {
         const note = item.data;
-        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 32px 8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);position:relative;overflow:visible;width:100%;box-sizing:border-box"><div style="display:block;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55;overflow:visible;max-height:none;height:auto;min-height:0">📝 ${escapeHtml(note.text)}</div><button class="btn-icon-small" data-action="editNote" data-note-id="${note.id}" style="position:absolute;top:4px;right:4px;opacity:0.5" title="Editar nota">✏️</button></div>`;
+        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 36px 8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);position:relative;margin-bottom:8px"><div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</div><button class="btn-icon-small" data-action="editNote" data-note-id="${note.id}" style="position:absolute;top:4px;right:4px;opacity:0.5" title="Editar nota">✏️</button></div>`;
       }
 
       // Get task logs for this date
@@ -287,17 +287,17 @@ export async function renderPot(potId) {
       // Show if there are photos, notes, or task logs
       if (photosInDate.length > 0 || notesInDate.length > 0 || tasklogsInDate.length > 0) {
         const hasEditable = photosInDate.length > 0 || notesInDate.length > 0;
+        // Photos + analysis row (only when photos exist)
+        const photosRow = photosHtml ? `<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;margin-bottom:${analysisText||notesHtml||tasklogsHtml?'8px':'0'}">
+            <div style="display:flex;gap:8px">${photosHtml}</div>
+            ${analysisText ? `<div style="flex:1;min-width:0;background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);word-break:break-word">${analysisText}</div>` : ''}
+            ${hasEditable ? `<button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:flex-start">✏️</button>` : ''}
+          </div>` : (hasEditable ? `<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}">✏️</button></div>` : '');
         content += `<div class="glass-card mb-16" style="padding:12px">
           <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
-            <div style="display:flex;gap:8px">${photosHtml}</div>
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
-              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);word-break:break-word">${analysisText}</div>` : ''}
-              ${notesHtml}
-              ${tasklogsHtml}
-            </div>
-            ${hasEditable ? `<button class="btn btn-icon btn-secondary" data-action="editDayItems" data-date="${date}" style="margin-left:auto;align-self:center">✏️</button>` : ''}
-          </div>
+          ${photosRow}
+          ${notesHtml}
+          ${tasklogsHtml}
         </div>`;
       }
     }

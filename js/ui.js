@@ -219,16 +219,11 @@ export async function renderPot(potId) {
         const photo = item.data;
         const { url, analysis } = photoMap[photo.id];
 
-        // Show only emoji indicator under thumbnail; full text goes below as a note block
-        const photoLabel = photo.userNotes
-          ? `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;text-align:center">📝</div>`
-          : '';
-
-        photosHtml += `<div style="display:flex;flex-direction:column;align-items:center"><img src="${url}" alt="Foto" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border-glass)" data-action="viewPhoto" data-photo-id="${photo.id}">${photoLabel}</div>`;
+        photosHtml += `<div style="display:flex;flex-direction:column;align-items:center"><img src="${url}" alt="Foto" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border-glass)" data-action="viewPhoto" data-photo-id="${photo.id}"></div>`;
 
         // Render full userNotes text as a readable block (like standalone notes)
         if (photo.userNotes) {
-          notesHtml += `<div style="background:var(--bg-secondary);padding:8px 36px 8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);position:relative;margin-bottom:8px"><div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(photo.userNotes)}</div><button class="btn-icon-small" data-action="editPhoto" data-photo-id="${photo.id}" style="position:absolute;top:4px;right:4px;opacity:0.5" title="Editar nota">✏️</button></div>`;
+          notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);margin-bottom:8px"><div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(photo.userNotes)}</div></div>`;
         }
 
         // Extract analysis text from first photo analysis
@@ -269,7 +264,7 @@ export async function renderPot(potId) {
       const notesInDate = dateItems.filter(i => i.type === 'note');
       for (const item of notesInDate) {
         const note = item.data;
-        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 36px 8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);position:relative;margin-bottom:8px"><div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</div><button class="btn-icon-small" data-action="editNote" data-note-id="${note.id}" style="position:absolute;top:4px;right:4px;opacity:0.5" title="Editar nota">✏️</button></div>`;
+        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary);margin-bottom:8px"><div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</div></div>`;
       }
 
       // Get task logs for this date

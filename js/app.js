@@ -233,6 +233,7 @@ async function handleAction(action, target) {
         // 1st click: enter select mode
         potSelectMode = true;
         document.getElementById('pots-grid')?.classList.add('select-mode');
+        updatePotBulkBar();
         updatePotSelectAllBtn();
         showToast('Toca macetas para seleccionar');
       } else {
@@ -245,7 +246,7 @@ async function handleAction(action, target) {
             el.classList.remove('pot-selected');
             el.querySelector('.pot-select-check')?.classList.remove('checked');
           });
-          document.getElementById('pot-bulk-bar')?.remove();
+          updatePotBulkBar();
           showToast('Selección eliminada');
         } else {
           for (const id of allIds) {
@@ -1393,10 +1394,11 @@ function updatePotBulkBar() {
   let bar = document.getElementById('pot-bulk-bar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'pot-bulk-bar'; bar.className = 'bulk-action-bar'; document.body.appendChild(bar); }
   const n = selectedPots.size;
+  const taskBtn = n > 0 ? `<button class="bulk-btn" data-action="bulkPotTask">📋 Aplicar tarea</button>` : '';
   bar.innerHTML = `
     <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
     <div class="bulk-actions">
-      <button class="bulk-btn" data-action="bulkPotTask">📋 Aplicar tarea</button>
+      ${taskBtn}
       <button class="bulk-btn bulk-btn-cancel" data-action="clearPotSelection">✕ Cancelar</button>
     </div>`;
 }

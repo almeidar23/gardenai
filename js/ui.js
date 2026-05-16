@@ -94,7 +94,7 @@ export async function renderHome() {
     </div>`;
   }
   potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas">✅</button></div>
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 
@@ -864,6 +864,11 @@ export function renderBulkPotTaskModal(products, potCount) {
       <div class="modal-handle"></div>
       <div class="modal-title">📋 Aplicar a ${potCount} maceta${potCount!==1?'s':''}</div>
       <div class="section-subtitle">¿Qué aplicaste hoy?</div>
+      <button class="btn btn-secondary btn-block" data-action="bulkPotNote" style="justify-content:flex-start;gap:12px;margin-bottom:4px;border-color:rgba(45,212,168,0.35)">
+        <span style="font-size:1.3rem">📝</span>
+        <span style="flex:1;text-align:left">Agregar Nota</span>
+      </button>
+      <div style="border-top:1px solid var(--border-glass);margin:8px 0"></div>
       <div class="flex flex-col gap-8">${list}</div>
     </div>
   </div>`;
@@ -911,6 +916,10 @@ export function renderBulkDateModal(count) {
 
 export function renderBulkNotesModal(count) {
   return `<div class="modal-overlay" data-action="closeModal" id="bulk-notes-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📝 Agregar Notas</div><div class="section-subtitle">Se aplicará a ${count} foto${count!==1?'s':''} seleccionada${count!==1?'s':''}</div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="bulk-notes-input" placeholder="Tus observaciones..." style="min-height:100px"></textarea></div><button class="btn btn-primary btn-block" data-action="confirmBulkNotes" id="confirm-bulk-notes-btn">✅ Aplicar</button></div></div>`;
+}
+
+export function renderBulkPotNoteModal(potCount) {
+  return `<div class="modal-overlay" data-action="closeModal" id="bulk-pot-note-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">📝 Agregar Nota</div><div class="section-subtitle">Se guardará en ${potCount} maceta${potCount!==1?'s':''} seleccionada${potCount!==1?'s':''}</div><div class="form-group" style="margin-top:12px"><textarea class="form-input" id="bulk-pot-note-input" placeholder="Escribe tus observaciones..." style="min-height:120px"></textarea></div><div class="flex gap-8"><button class="btn btn-secondary btn-block" data-action="closeModal">Cancelar</button><button class="btn btn-primary btn-block" data-action="confirmBulkPotNote" id="confirm-bulk-pot-note-btn">💾 Guardar</button></div></div></div>`;
 }
 
 // ===== CALENDAR =====

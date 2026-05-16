@@ -998,166 +998,179 @@ export async function renderStats() {
     return `<div class="empty-state"><div class="empty-icon">📊</div><p>Agrega macetas para ver las estadísticas de tu jardín.</p></div>`;
   }
 
-  // Fetch all photos, notes, and analyses from all pots
-  const [photosArr, notesArr, analysesArr] = await Promise.all([
-    Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
-    Promise.all(pots.map(p => DB.getNotesByPot(p.id))),
-    Promise.all(pots.map(p => DB.getAnalysesByPot(p.id)))
-  ]);
-
-  // Create a map of pot IDs to pot data for easy reference
   const potMap = {};
   pots.forEach(pot => { potMap[pot.id] = pot; });
 
-  // Fetch all photo URLs and analyses in parallel
+  // Fetch all data in parallel
+  const [photosArr, notesArr, analysesArr, taskLogs, products] = await Promise.all([
+    Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
+    Promise.all(pots.map(p => DB.getNotesByPot(p.id))),
+    Promise.all(pots.map(p => DB.getAnalysesByPot(p.id))),
+    DB.getTaskLogsByPots(pots.map(p => p.id)),
+    DB.getAllProducts()
+  ]);
+
+  const productMap = {};
+  products.forEach(pr => { productMap[pr.slug] = pr; });
+
+  // Fetch analyses keyed by photoId
   let allPhotos = [];
   photosArr.forEach((photos, i) => {
-    photos.forEach(photo => { allPhotos.push({ ...photo, potId: pots[i].id }); });
+    photos.forEach(photo => allPhotos.push({ ...photo, potId: pots[i].id }));
   });
-
-  const photoUrls = await Promise.all(allPhotos.map(p => getPhotoURL(p)));
   const photoAnalyses = await Promise.all(allPhotos.map(p => DB.getAnalysisByPhoto(p.id)));
+  const photoAnalysisMap = {};
+  allPhotos.forEach((p, i) => { photoAnalysisMap[p.id] = photoAnalyses[i]; });
 
-  const photoMap = {};
-  allPhotos.forEach((p, i) => {
-    photoMap[p.id] = { url: photoUrls[i], analysis: photoAnalyses[i] };
-  });
+  // ---- helpers ----
+  function potLabel(pot) { return `${pot.emoji || '🪴'} ${escapeHtml(pot.name)}`; }
 
-  // Combine all photos, notes, and analyses into a single timeline
+  function potListText(potArr, max = 3) {
+    if (!potArr.length) return '';
+    if (potArr.length === 1) return potLabel(potArr[0]);
+    if (potArr.length <= max) return potArr.map(potLabel).join(', ');
+    return potArr.slice(0, 2).map(potLabel).join(', ') + ` y ${potArr.length - 2} más`;
+  }
+
+  function taskVerb(slug, productName) {
+    const s = (slug + ' ' + productName).toLowerCase();
+    if (/riego|agua|water|reg/.test(s)) return '💧 Se regó';
+    if (/tierra|remuev|afloj|soil/.test(s)) return '🌱 Se removió la tierra';
+    if (/fertiliz|abono|nutri|fertil/.test(s)) return '🌿 Se fertilizó';
+    if (/poda|prune|recort/.test(s)) return '✂️ Se podó';
+    if (/pesticid|plaga|insect|fungic/.test(s)) return '🐛 Se trató';
+    return '✅ Se aplicó';
+  }
+
+  // ---- collect all items into a flat list with date ----
   const allItems = [];
 
   photosArr.forEach((photos, i) => {
-    photos.forEach(p => {
-      allItems.push({ type: 'photo', data: { ...p, potId: pots[i].id }, potIndex: i });
-    });
+    photos.forEach(p => allItems.push({ type: 'photo', date: p.createdAt, potId: pots[i].id, data: p }));
   });
-
   notesArr.forEach((notes, i) => {
-    notes.forEach(n => {
-      allItems.push({ type: 'note', data: { ...n, potId: pots[i].id }, potIndex: i });
-    });
+    notes.forEach(n => allItems.push({ type: 'note', date: n.createdAt, potId: pots[i].id, data: n }));
   });
-
   analysesArr.forEach((analyses, i) => {
-    analyses.forEach(a => {
-      allItems.push({ type: 'analysis', data: { ...a, potId: pots[i].id }, potIndex: i });
-    });
+    analyses.forEach(a => allItems.push({ type: 'analysis', date: a.createdAt, potId: pots[i].id, data: a }));
+  });
+  taskLogs.forEach(tl => {
+    allItems.push({ type: 'tasklog', date: tl.appliedAt, potId: tl.potId, data: tl });
   });
 
-  // Sort by date (descending)
-  allItems.sort((a, b) => new Date(b.data.createdAt) - new Date(a.data.createdAt));
-
-  // Group by date
+  // Group by calendar date
   const groups = {};
   for (const item of allItems) {
-    const k = dateKey(item.data.createdAt);
-    if(!groups[k]) groups[k] = [];
+    const k = dateKey(item.date);
+    if (!groups[k]) groups[k] = [];
     groups[k].push(item);
   }
 
-  let content = '';
   const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+  let content = '';
 
-  for (const date of sortedDates) {
-    const dateItems = groups[date];
+  for (const dk of sortedDates) {
+    const dayItems = groups[dk];
+    const bullets = [];
 
-    // Organize items by pot for this date
-    const potGroups = {};
-    for (const item of dateItems) {
-      const potId = item.data.potId;
-      if (!potGroups[potId]) potGroups[potId] = [];
-      potGroups[potId].push(item);
+    // ---- 1. Task logs grouped by product ----
+    const tasksByProduct = {};
+    for (const item of dayItems.filter(i => i.type === 'tasklog')) {
+      const slug = item.data.productSlug;
+      if (!tasksByProduct[slug]) tasksByProduct[slug] = [];
+      tasksByProduct[slug].push(item.potId);
+    }
+    for (const [slug, potIds] of Object.entries(tasksByProduct)) {
+      const product = productMap[slug];
+      const productName = product?.name || slug;
+      const verb = taskVerb(slug, productName);
+      const uniquePotIds = [...new Set(potIds)];
+      const potObjs = uniquePotIds.map(id => potMap[id]).filter(Boolean);
+      const inText = potObjs.length === pots.length ? 'en todas las macetas' : `en ${potListText(potObjs)}`;
+      bullets.push(`<li>${verb} <strong>${escapeHtml(productName)}</strong> ${inText}</li>`);
     }
 
-    // Build content for each pot that has items on this date
-    let dayContent = '';
-    for (const potId of Object.keys(potGroups).sort((a, b) => Number(a) - Number(b))) {
-      const potItems = potGroups[potId];
+    // ---- 2. Photos (grouped by pot) ----
+    const photosByPot = {};
+    for (const item of dayItems.filter(i => i.type === 'photo')) {
+      if (!photosByPot[item.potId]) photosByPot[item.potId] = [];
+      photosByPot[item.potId].push(item.data);
+    }
+    const photoPotsAll = Object.keys(photosByPot);
+    if (photoPotsAll.length) {
+      const totalPhotos = Object.values(photosByPot).reduce((s, arr) => s + arr.length, 0);
+      const potObjs = photoPotsAll.map(id => potMap[id]).filter(Boolean);
+      const inText = potObjs.length === pots.length ? 'en todas las macetas' : `en ${potListText(potObjs)}`;
+      const fLabel = totalPhotos === 1 ? '1 foto' : `${totalPhotos} fotos`;
+      bullets.push(`<li>📷 Se tomó${totalPhotos > 1 ? 'n' : ''} ${fLabel} ${inText}</li>`);
+    }
+
+    // ---- 3. AI analyses ----
+    const analysisByPot = {};
+    for (const item of dayItems.filter(i => i.type === 'analysis')) {
+      analysisByPot[item.potId] = item.data;
+    }
+    // Group by health status
+    const healthy = [], warning = [], danger = [], recs = [];
+    for (const [potId, analysis] of Object.entries(analysisByPot)) {
       const pot = potMap[potId];
-
-      let photosHtml = '';
-      let notesHtml = '';
-      let analysisText = '';
-
-      // Get photos for this pot on this date
-      const photosInDate = potItems.filter(i => i.type === 'photo');
-      for (const item of photosInDate) {
-        const photo = item.data;
-        const { url, analysis } = photoMap[photo.id];
-
-        let photoLabel = '';
-        if (photo.userNotes) {
-          photoLabel = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center">📝 ${escapeHtml(photo.userNotes.substring(0, 15))}</div>`;
-        }
-
-        photosHtml += `<div style="display:flex;flex-direction:column;align-items:center"><img src="${url}" alt="Foto" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--border-glass)" data-action="viewPhoto" data-photo-id="${photo.id}">${photoLabel}</div>`;
-
-        // Extract analysis text from first photo analysis
-        if (analysis && analysis.result && !analysisText) {
-          const r = analysis.result;
-          let parts = [];
-
-          if (r.healthStatus) {
-            const statusEmoji = { healthy: '🟢', warning: '🟡', danger: '🔴' };
-            const statusLabel = { healthy: 'Sana', warning: 'Atención', danger: 'Problema' };
-            const e = statusEmoji[r.healthStatus] || '⚪';
-            const l = statusLabel[r.healthStatus] || r.healthStatus;
-            parts.push(`${e} ${l}${r.healthScore ? ' (' + r.healthScore + '/10)' : ''}`);
-
-            if (r.issues && r.issues.length > 0) {
-              parts.push('⚠️ ' + r.issues.map(i => escapeHtml(i.name || i.type)).join(', '));
-            }
-          }
-
-          if (r.humidity && r.humidity !== 'N/A') {
-            parts.push(`💧 Humedad: ${escapeHtml(r.humidity)}%`);
-          }
-          if (r.ph && r.ph !== 'N/A') {
-            parts.push(`⚗️ pH: ${escapeHtml(r.ph)}`);
-          }
-          if (r.temperature && r.temperature !== 'N/A') {
-            parts.push(`🌡️ ${escapeHtml(r.temperature)}`);
-          }
-          if (r.notes) {
-            parts.push(`📌 ${escapeHtml(r.notes.substring(0, 40))}`);
-          }
-
-          analysisText = parts.join(' · ');
-        }
+      if (!pot) continue;
+      const r = analysis.result || {};
+      const hs = r.healthStatus;
+      if (hs === 'healthy') healthy.push(pot);
+      else if (hs === 'warning') warning.push(pot);
+      else if (hs === 'danger') danger.push(pot);
+      if (r.recommendations && r.recommendations.length) {
+        r.recommendations.forEach(rec => recs.push({ pot, rec }));
       }
+    }
+    if (healthy.length) bullets.push(`<li>🟢 IA analizó ${potListText(healthy)}: todo bien</li>`);
+    if (warning.length) bullets.push(`<li>🟡 IA detectó alertas en ${potListText(warning)}</li>`);
+    if (danger.length) bullets.push(`<li>🔴 IA detectó problemas en ${potListText(danger)}</li>`);
+    // Group identical recommendations
+    const recsByText = {};
+    for (const { pot, rec } of recs) {
+      if (!recsByText[rec]) recsByText[rec] = [];
+      recsByText[rec].push(pot);
+    }
+    for (const [rec, recPots] of Object.entries(recsByText)) {
+      bullets.push(`<li>🤖 IA recomendó: <em>${escapeHtml(rec)}</em> en ${potListText(recPots)}</li>`);
+    }
 
-      // Get notes for this pot on this date
-      const notesInDate = potItems.filter(i => i.type === 'note');
-      for (const item of notesInDate) {
-        const note = item.data;
-        notesHtml += `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)"><span style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;line-height:1.55">📝 ${escapeHtml(note.text)}</span></div>`;
+    // ---- 4. Notes (with links to pot) ----
+    const notesItems = dayItems.filter(i => i.type === 'note');
+    if (notesItems.length) {
+      // Group by pot
+      const notesByPot = {};
+      for (const item of notesItems) {
+        if (!notesByPot[item.potId]) notesByPot[item.potId] = [];
+        notesByPot[item.potId].push(item.data);
       }
-
-      // Only show if there are photos or notes (skip empty entries)
-      if (photosInDate.length > 0 || notesInDate.length > 0) {
-        dayContent += `<div style="padding:8px;border-left:2px solid var(--accent);margin-bottom:12px;padding-left:12px">
-          <div style="font-size:0.75rem;color:var(--accent);font-weight:600;margin-bottom:8px">${escapeHtml(pot.emoji || '🪴')} ${escapeHtml(pot.name)}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">
-            <div style="display:flex;gap:8px">${photosHtml}</div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:8px">
-              ${analysisText ? `<div style="background:var(--bg-secondary);padding:8px 12px;border-radius:12px;border:1px solid var(--border-glass);font-size:0.8rem;color:var(--text-primary)">${analysisText}</div>` : ''}
-              ${notesHtml}
-            </div>
-          </div>
-        </div>`;
+      for (const [potId, notes] of Object.entries(notesByPot)) {
+        const pot = potMap[potId];
+        if (!pot) continue;
+        const potLink = `<a class="stats-pot-link" data-navigate="pot/${potId}">${potLabel(pot)}</a>`;
+        if (notes.length === 1) {
+          const preview = escapeHtml(notes[0].text.substring(0, 60)) + (notes[0].text.length > 60 ? '…' : '');
+          bullets.push(`<li>📝 Nota en ${potLink}: <span class="stats-note-preview">${preview}</span></li>`);
+        } else {
+          bullets.push(`<li>📝 ${notes.length} notas en ${potLink}</li>`);
+        }
       }
     }
 
-    // Only show the date card if there's content
-    if (dayContent) {
-      content += `<div class="glass-card mb-16" style="padding:12px">
-        <div class="summary-title" style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">${formatDate(dateItems[0].data.createdAt)}</div>
-        ${dayContent}
-      </div>`;
-    }
+    if (!bullets.length) continue;
+
+    // Format date header nicely (capitalize weekday)
+    const dateLabel = formatDate(dayItems[0].date).replace(/^\w/, c => c.toUpperCase());
+
+    content += `<div class="glass-card mb-16 stats-day-card">
+      <div class="stats-day-header">${dateLabel}</div>
+      <ul class="stats-day-bullets">${bullets.join('')}</ul>
+    </div>`;
   }
 
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">📊 Historial de tu jardín</div></div>${content || '<div class="empty-state"><p>No hay fotos ni notas aún. ¡Comienza a documentar tu jardín!</p></div>'}`;
+  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">📊 Resumen del jardín</div></div>${content || '<div class="empty-state"><p>No hay actividad aún. ¡Comienza a documentar tu jardín!</p></div>'}`;
 }
 
 // ===== TOAST =====

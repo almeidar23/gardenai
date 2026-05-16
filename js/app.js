@@ -242,43 +242,32 @@ async function handleAction(action, target) {
       break;
     }
     case 'clearTaskSelection': { taskSelectMode = false; clearTaskPotSelection(); break; }
-    case 'bulkApplyProduct': {
+    case 'bulkRecommendProduct':
+    case 'bulkExecuteProduct': {
+      const execMode = action === 'bulkExecuteProduct' ? 'execute' : 'recommend';
       const products = await DB.getAllProducts();
       products.sort((a, b) => a.name.localeCompare(b.name));
 
       // Get recommended products from selected pots
       const recommendedSet = new Set();
-      const selectedPotIds = [...selectedPotsTask];
-      for (const potId of selectedPotIds) {
-        const pot = await DB.getPot(Number(potId));
+      for (const potId of [...selectedPotsTask]) {
         const analyses = await DB.getAnalysesByPot(Number(potId));
         const recommended = mapIssuesToProducts(analyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []), null);
         recommended.forEach(p => recommendedSet.add(p.slug));
       }
 
-      const modalHtml = renderBulkApplyProductModal(products, selectedPotsTask.size, [...recommendedSet]);
-      modalsEl().innerHTML = modalHtml;
+      modalsEl().innerHTML = renderBulkApplyProductModal(products, selectedPotsTask.size, [...recommendedSet], execMode);
       break;
     }
-    case 'confirmBulkApplyProduct': {
+    case 'confirmBulkRecommendProduct': {
       const slug = target.dataset.productSlug;
       const ids = [...selectedPotsTask];
-      const products = await DB.getAllProducts();
 
       for (const potId of ids) {
         const pot = await DB.getPot(Number(potId));
         if (pot) {
           if (!pot.activeProducts || pot.activeProducts.length === 0) {
-            const analyses = await DB.getAnalysesByPot(pot.id);
-            const issues = analyses.filter(a => a.type === 'plant').flatMap(a => a.result?.issues || []);
-            const recommended = issues.length > 0 ? issues.flatMap(issue => {
-              if (issue === 'pest') return ['fungicide', 'insecticide'];
-              if (issue === 'disease') return ['fungicide'];
-              if (issue === 'nutrient-deficiency') return ['fertilizer'];
-              if (issue === 'water-stress') return [];
-              return [];
-            }) : [];
-            pot.activeProducts = [...new Set([...recommended, slug])];
+            pot.activeProducts = [slug];
           } else if (!pot.activeProducts.includes(slug)) {
             pot.activeProducts.push(slug);
           }
@@ -287,7 +276,32 @@ async function handleAction(action, target) {
         }
       }
       closeModal(); clearTaskPotSelection();
-      showToast(`✅ Producto agregado a ${ids.length} maceta${ids.length!==1?'s':''}`);
+      showToast(`⭐ Producto recomendado en ${ids.length} maceta${ids.length!==1?'s':''}`);
+      await new Promise(r => setTimeout(r, 500));
+      mainEl().innerHTML = await renderTasks();
+      break;
+    }
+    case 'confirmBulkExecuteProduct': {
+      const slug = target.dataset.productSlug;
+      const ids = [...selectedPotsTask];
+      const now = new Date().toISOString();
+
+      for (const potId of ids) {
+        const pot = await DB.getPot(Number(potId));
+        if (pot) {
+          if (!pot.activeProducts || pot.activeProducts.length === 0) {
+            pot.activeProducts = [slug];
+          } else if (!pot.activeProducts.includes(slug)) {
+            pot.activeProducts.push(slug);
+          }
+          await DB.updatePot(pot);
+          // Delete old logs for this product+pot, then add a new one for today
+          await DB.deleteTaskLogsByProductAndPot(Number(potId), slug);
+          await DB.addTaskLog({ potId: Number(potId), productSlug: slug, appliedAt: now });
+        }
+      }
+      closeModal(); clearTaskPotSelection();
+      showToast(`⚡ Ejecutado en ${ids.length} maceta${ids.length!==1?'s':''} — próxima vez calculada`);
       await new Promise(r => setTimeout(r, 500));
       mainEl().innerHTML = await renderTasks();
       break;
@@ -1246,7 +1260,8 @@ function updateTaskBulkBar() {
   bar.innerHTML = `
     <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
     <div class="bulk-actions">
-      <button class="bulk-btn" data-action="bulkApplyProduct">📋 Aplicar producto</button>
+      <button class="bulk-btn" data-action="bulkRecommendProduct">⭐ Recomendar</button>
+      <button class="bulk-btn bulk-btn-execute" data-action="bulkExecuteProduct">⚡ Ejecutar</button>
       <button class="bulk-btn bulk-btn-cancel" data-action="clearTaskSelection">✕ Cancelar</button>
     </div>`;
 }

@@ -869,7 +869,13 @@ export function renderBulkPotTaskModal(products, potCount) {
   </div>`;
 }
 
-export function renderBulkApplyProductModal(products, potCount, recommendedSlugs = []) {
+export function renderBulkApplyProductModal(products, potCount, recommendedSlugs = [], mode = 'recommend') {
+  const isExecute = mode === 'execute';
+  const confirmAction = isExecute ? 'confirmBulkExecuteProduct' : 'confirmBulkRecommendProduct';
+  const title = isExecute ? '⚡ Ejecutar producto' : '⭐ Recomendar producto';
+  const subtitle = isExecute
+    ? `Aplicar hoy a ${potCount} maceta${potCount!==1?'s':''} — el contador de próxima vez empieza desde hoy`
+    : `Recomendar producto a ${potCount} maceta${potCount!==1?'s':''}`;
   let list = '';
   if (products.length === 0) {
     list = `<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.85rem">No hay productos disponibles. <a href="#products" style="color:var(--accent)">Crear uno</a></div>`;
@@ -877,7 +883,7 @@ export function renderBulkApplyProductModal(products, potCount, recommendedSlugs
     for (const p of products) {
       const isRecommended = recommendedSlugs.includes(p.slug);
       const recommendedLabel = isRecommended ? `<span style="color:var(--text-muted);font-size:0.72rem;font-weight:500">Recomendado</span>` : '';
-      list += `<button class="btn btn-secondary btn-block" data-action="confirmBulkApplyProduct" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
+      list += `<button class="btn btn-secondary btn-block" data-action="${confirmAction}" data-product-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:12px">
         <span style="font-size:1.3rem">${escapeHtml(p.icon)}</span>
         <span style="flex:1;text-align:left">
           <div>${escapeHtml(p.name)}</div>
@@ -890,8 +896,8 @@ export function renderBulkApplyProductModal(products, potCount, recommendedSlugs
   return `<div class="modal-overlay" data-action="closeModal" id="bulk-apply-product-modal">
     <div class="modal-content">
       <div class="modal-handle"></div>
-      <div class="modal-title">📋 Aplicar producto</div>
-      <div class="section-subtitle">Selecciona un producto para aplicar a ${potCount} maceta${potCount!==1?'s':''}</div>
+      <div class="modal-title">${title}</div>
+      <div class="section-subtitle">${subtitle}</div>
       <div style="display:flex;flex-direction:column;gap:8px">${list}</div>
     </div>
   </div>`;

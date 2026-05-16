@@ -230,38 +230,43 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectMode': {
       if (!potSelectMode) {
-        // 1st click: enter select mode
+        // Enter select mode
         potSelectMode = true;
         document.getElementById('pots-grid')?.classList.add('select-mode');
         updatePotBulkBar();
         updatePotSelectAllBtn();
         showToast('Toca macetas para seleccionar');
       } else {
-        // Already in mode: select all ↔ deselect all (Cancelar exits)
-        const allIds = getAllHomePotIds();
-        const allSelected = allIds.length > 0 && allIds.every(id => selectedPots.has(id));
-        if (allSelected) {
-          selectedPots.clear();
-          document.querySelectorAll('.pot-card.pot-selected').forEach(el => {
-            el.classList.remove('pot-selected');
-            el.querySelector('.pot-select-check')?.classList.remove('checked');
-          });
-          updatePotBulkBar();
-          showToast('Selección eliminada');
-        } else {
-          for (const id of allIds) {
-            if (!selectedPots.has(id)) {
-              selectedPots.add(id);
-              const card = document.getElementById(`pot-card-${id}`);
-              card?.classList.add('pot-selected');
-              card?.querySelector('.pot-select-check')?.classList.add('checked');
-            }
-          }
-          updatePotBulkBar();
-          showToast(`✅ ${allIds.length} maceta${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
-        }
-        updatePotSelectAllBtn();
+        // Already in mode — same button now exits
+        clearPotSelection();
+        showToast('Selección cancelada');
       }
+      break;
+    }
+    case 'potSelectAll': {
+      const allIds = getAllHomePotIds();
+      for (const id of allIds) {
+        if (!selectedPots.has(id)) {
+          selectedPots.add(id);
+          const card = document.getElementById(`pot-card-${id}`);
+          card?.classList.add('pot-selected');
+          card?.querySelector('.pot-select-check')?.classList.add('checked');
+        }
+      }
+      updatePotBulkBar();
+      updatePotSelectAllBtn();
+      showToast(`✅ ${allIds.length} maceta${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
+      break;
+    }
+    case 'potSelectNone': {
+      selectedPots.clear();
+      document.querySelectorAll('.pot-card.pot-selected').forEach(el => {
+        el.classList.remove('pot-selected');
+        el.querySelector('.pot-select-check')?.classList.remove('checked');
+      });
+      updatePotBulkBar();
+      updatePotSelectAllBtn();
+      showToast('Selección eliminada');
       break;
     }
     case 'enterPotSelectModeTask': {
@@ -1368,13 +1373,11 @@ function getAllHomePotIds() {
 function updatePotSelectAllBtn() {
   const btn = document.getElementById('pot-select-mode-btn');
   if (!btn) return;
-  const allIds = getAllHomePotIds();
-  const allSelected = potSelectMode && allIds.length > 0 && allIds.every(id => selectedPots.has(id));
   const svgOutlined = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const svgFilled = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  btn.innerHTML = potSelectMode ? svgFilled : svgOutlined;
-  btn.classList.toggle('select-mode-active', potSelectMode && !allSelected);
-  btn.classList.toggle('select-all-active', allSelected);
+  const svgCancel = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#dc2626"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+  btn.innerHTML = potSelectMode ? svgCancel : svgOutlined;
+  btn.classList.toggle('select-mode-active', potSelectMode);
+  btn.classList.remove('select-all-active');
 }
 
 function clearPotSelection() {
@@ -1394,11 +1397,17 @@ function updatePotBulkBar() {
   let bar = document.getElementById('pot-bulk-bar');
   if (!bar) { bar = document.createElement('div'); bar.id = 'pot-bulk-bar'; bar.className = 'bulk-action-bar'; document.body.appendChild(bar); }
   const n = selectedPots.size;
+  const allIds = getAllHomePotIds();
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedPots.has(id));
   const taskBtn = n > 0 ? `<button class="bulk-btn" data-action="bulkPotTask">📋 Aplicar tarea</button>` : '';
+  const selectAllBtn = !allSelected ? `<button class="bulk-btn" data-action="potSelectAll">☑️ Todo</button>` : '';
+  const clearBtn = n > 0 ? `<button class="bulk-btn" data-action="potSelectNone">○ Ninguna</button>` : '';
   bar.innerHTML = `
     <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
     <div class="bulk-actions">
       ${taskBtn}
+      ${selectAllBtn}
+      ${clearBtn}
       <button class="bulk-btn bulk-btn-cancel" data-action="clearPotSelection">✕ Cancelar</button>
     </div>`;
 }

@@ -355,6 +355,7 @@ a { color: var(--accent); text-decoration: none; }
 .header-settings-btn.active {
   opacity: 1;
   background: rgba(45, 212, 168, 0.12);
+  color: var(--accent);
 }
 
 .header-back {

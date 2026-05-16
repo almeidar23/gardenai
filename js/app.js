@@ -37,7 +37,9 @@ let taskSelectMode = false;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
-  const thumb = document.getElementById(`photo-${id}`);
+  // Support both id-based thumbs (photo detail grid) and data-photo-id elements (pot timeline)
+  const thumb = document.getElementById(`photo-${id}`) ||
+    document.querySelector(`[data-action="viewPhoto"][data-photo-id="${id}"]`);
   if (selectedPhotos.has(id)) {
     selectedPhotos.delete(id); thumb?.classList.remove('selected');
   } else {
@@ -45,12 +47,33 @@ function togglePhotoSelection(photoId) {
   }
   if (selectedPhotos.size > 0) updateBulkBar();
   else document.getElementById('bulk-action-bar')?.remove();
+  updatePhotoSelectBtn();
+}
+
+function getAllPotPhotoIds() {
+  return [...document.querySelectorAll('[data-action="viewPhoto"][data-photo-id]')]
+    .map(el => el.dataset.photoId).filter(Boolean);
+}
+
+function updatePhotoSelectBtn() {
+  const btn = document.getElementById('select-mode-btn');
+  if (!btn) return;
+  const allIds = getAllPotPhotoIds();
+  const allSelected = photoSelectMode && allIds.length > 0 && allIds.every(id => selectedPhotos.has(id));
+  const svgOutlined = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const svgFilled = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  btn.innerHTML = photoSelectMode ? svgFilled : svgOutlined;
+  btn.classList.toggle('select-mode-active', photoSelectMode && !allSelected);
+  btn.classList.toggle('select-all-active', allSelected);
 }
 
 function clearPhotoSelection() {
+  photoSelectMode = false;
   selectedPhotos.clear();
-  document.querySelectorAll('.photo-thumb.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.photo-thumb.selected, [data-action="viewPhoto"].selected')
+    .forEach(el => el.classList.remove('selected'));
   document.getElementById('bulk-action-bar')?.remove();
+  updatePhotoSelectBtn();
 }
 
 function updateBulkBar() {
@@ -181,18 +204,28 @@ function showLoading() {
 async function handleAction(action, target) {
   switch (action) {
     case 'enterSelectMode': {
-      photoSelectMode = !photoSelectMode;
-      const grid = document.querySelector('.photos-grid');
-      if (grid) grid.classList.toggle('select-mode', photoSelectMode);
-      const btn = document.getElementById('select-mode-btn');
-      if (btn) {
-        btn.classList.toggle('select-active', photoSelectMode);
-        btn.innerHTML = photoSelectMode
-          ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#16a34a"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-          : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      if (!photoSelectMode) {
+        photoSelectMode = true;
+        updatePhotoSelectBtn();
+        showToast('Toca fotos para seleccionar');
+      } else {
+        const allIds = getAllPotPhotoIds();
+        const allSelected = allIds.length > 0 && allIds.every(id => selectedPhotos.has(id));
+        if (allSelected) {
+          clearPhotoSelection();
+          showToast('Selección eliminada');
+        } else {
+          for (const id of allIds) {
+            if (!selectedPhotos.has(id)) {
+              selectedPhotos.add(id);
+              document.querySelector(`[data-action="viewPhoto"][data-photo-id="${id}"]`)?.classList.add('selected');
+            }
+          }
+          updateBulkBar();
+          showToast(`✅ ${allIds.length} foto${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
+        }
+        updatePhotoSelectBtn();
       }
-      if (!photoSelectMode) clearPhotoSelection();
-      showToast(photoSelectMode ? 'Modo selección activado' : 'Selección desactivada');
       break;
     }
     case 'enterPotSelectMode': {

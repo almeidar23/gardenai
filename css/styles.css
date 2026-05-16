@@ -1599,6 +1599,15 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   transform: scale(0.96);
 }
 
+/* Timeline photos selected state (pot detail) */
+[data-action="viewPhoto"].selected {
+  outline: 3px solid #16a34a;
+  outline-offset: 2px;
+  border-radius: 8px;
+  transform: scale(0.94);
+  transition: outline 0.15s, transform 0.15s;
+}
+
 .btn.select-active {
   background: rgba(22,163,74,0.15);
   border-color: #16a34a;

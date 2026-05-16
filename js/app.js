@@ -1331,7 +1331,9 @@ function togglePotSelection(potId) {
 }
 
 function getAllHomePotIds() {
-  return [...document.querySelectorAll('.pot-card[data-pot-id]')].map(el => el.dataset.potId);
+  return [...document.querySelectorAll('.pot-card[data-navigate^="pot/"]')]
+    .map(el => el.dataset.navigate.split('/')[1])
+    .filter(Boolean);
 }
 
 function updatePotSelectAllBtn() {

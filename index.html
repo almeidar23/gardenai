@@ -14,6 +14,15 @@
   <link rel="apple-touch-icon" href="./icons/icon-512.png">
   <link rel="stylesheet" href="./css/styles.css">
   <title>GardenAI — Jardín Inteligente</title>
+  <script>
+    // Apply saved theme instantly before first paint — eliminates black flash
+    (function() {
+      var t = localStorage.getItem('gardenai-theme');
+      if (t === 'botanical' || t === 'tropical') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="app">
@@ -25,7 +34,7 @@
       </a>
       <div class="header-title" id="header-title"></div>
       <div class="header-right">
-        <span class="app-version">v5.3.2</span>
+        <span class="app-version">v5.3.3</span>
         <button class="header-settings-btn" data-nav="settings" id="nav-settings" title="Ajustes">⚙️</button>
       </div>
     </header>

@@ -951,6 +951,7 @@ async function handleAction(action, target) {
     case 'setTheme': {
       const theme = target.dataset.theme;
       await DB.setSetting('theme', theme);
+      localStorage.setItem('gardenai-theme', theme);
       applyTheme(theme);
       mainEl().innerHTML = await renderSettings();
       break;
@@ -1628,6 +1629,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       await DB.init(user.uid);
       DB.registerUserProfile(user);
       const savedTheme = await DB.getSetting('theme') || 'dark';
+      localStorage.setItem('gardenai-theme', savedTheme);
       applyTheme(savedTheme);
 
       // Attempt to migrate legacy local data to Firestore

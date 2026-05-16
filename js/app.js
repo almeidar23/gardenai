@@ -197,18 +197,20 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectMode': {
       if (!potSelectMode) {
-        // 1st click: enter select mode
+        // Enter select mode
         potSelectMode = true;
-        const potsGrid = document.getElementById('pots-grid');
-        if (potsGrid) potsGrid.classList.add('select-mode');
+        document.getElementById('pots-grid')?.classList.add('select-mode');
         updatePotSelectAllBtn();
         showToast('Toca macetas para seleccionar');
+      } else if (selectedPots.size === 0) {
+        // In select mode with nothing selected → exit
+        clearPotSelection();
+        showToast('Selección desactivada');
       } else {
-        // Already in select mode: select all or deselect all
         const allIds = getAllHomePotIds();
         const allSelected = allIds.length > 0 && allIds.every(id => selectedPots.has(id));
         if (allSelected) {
-          // Deselect all, stay in select mode
+          // All selected → deselect all (stay in mode)
           selectedPots.clear();
           document.querySelectorAll('.pot-card.pot-selected').forEach(el => {
             el.classList.remove('pot-selected');
@@ -217,7 +219,7 @@ async function handleAction(action, target) {
           document.getElementById('pot-bulk-bar')?.remove();
           showToast('Selección eliminada');
         } else {
-          // Select all
+          // Some selected → select all
           for (const id of allIds) {
             if (!selectedPots.has(id)) {
               selectedPots.add(id);

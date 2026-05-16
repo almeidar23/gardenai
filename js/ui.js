@@ -458,7 +458,7 @@ function computeTaskStatus(pot, product, allLogs, isRecommended = false) {
 }
 
 // ===== TASKS VIEW =====
-export async function renderTasks() {
+export async function renderTasks(filter = 'all') {
   const [pots, products, analyses] = await Promise.all([
     DB.getAllPots(),
     DB.getAllProducts(),
@@ -466,10 +466,18 @@ export async function renderTasks() {
   ]);
   products.sort((a, b) => a.name.localeCompare(b.name));
 
-  if (pots.length === 0) return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
+  const filterChips = `<div class="task-filter-bar">
+    <button class="task-filter-chip${filter==='all'?' active':''}" data-action="setTaskFilter" data-filter="all">🔍 Todos</button>
+    <button class="task-filter-chip${filter==='pending'?' active':''}" data-action="setTaskFilter" data-filter="pending">⚠️ Pendientes</button>
+    <button class="task-filter-chip${filter==='soon'?' active':''}" data-action="setTaskFilter" data-filter="soon">📅 Próximos 3 días</button>
+    <button class="task-filter-chip${filter==='ai'?' active':''}" data-action="setTaskFilter" data-filter="ai">🤖 IA Recomendado</button>
+  </div>`;
+
+  if (pots.length === 0) return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>${filterChips}<div class="empty-state"><div class="empty-icon">🪴</div><p>Agrega macetas primero para ver las tareas pendientes.</p></div>`;
 
   const allLogs = await DB.getTaskLogsByPots(pots.map(p => Number(p.id)));
   let html = '';
+  let anyVisible = false;
 
   for (let i = 0; i < pots.length; i++) {
     const pot = pots[i];
@@ -483,14 +491,38 @@ export async function renderTasks() {
     for (const prod of activeProducts) {
       const isRecommended = recommendedSlugs.includes(prod.slug);
       const ts = computeTaskStatus(pot, prod, allLogs, isRecommended);
+
+      // Apply filter
+      if (filter === 'pending' && ts.status === 'healthy') continue;
+      if (filter === 'soon') {
+        // Show only overdue or due within 3 days
+        const rem = (() => {
+          const freq = pot.scheduleOverrides?.[prod.slug] || prod.defaultFrequencyDays;
+          const potLogs = allLogs.filter(l => l.potId === Number(pot.id) && l.productSlug === prod.slug);
+          if (!potLogs.length) return 0; // treat as due
+          const sorted = potLogs.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
+          const diffDays = Math.floor((new Date() - new Date(sorted[0].appliedAt)) / 86400000);
+          return freq - diffDays;
+        })();
+        if (rem > 3) continue;
+      }
+      if (filter === 'ai' && !isRecommended) continue;
+
       const recommendedLabel = (isRecommended && ts.label !== 'Pendiente' && ts.label !== 'Recomendado') ? `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:500;margin-right:8px">💡 IA</span>` : '';
       rows += `<div class="task-row"><span class="task-icon">${escapeHtml(prod.icon)}</span><span class="task-name">${escapeHtml(prod.name)}</span><div style="margin-left:auto;display:flex;align-items:center;gap:8px">${recommendedLabel}<button class="btn-status" data-action="openProductMenu" data-pot-id="${pot.id}" data-product-slug="${prod.slug}"><span class="status-badge status-${ts.status}">${escapeHtml(ts.label)}</span></button></div></div>`;
     }
 
+    if (!rows) continue; // skip pot if no tasks pass filter
+    anyVisible = true;
     html += `<div class="glass-card task-pot-card" id="task-pot-${pot.id}" data-toggle-select="task" data-pot-id="${pot.id}" style="animation-delay:${i*0.06}s;cursor:pointer"><div class="pot-select-check"></div><div class="task-pot-header"><span class="pot-emoji">${pot.emoji||'🪴'}</span><span class="pot-name">${escapeHtml(pot.name)}</span></div>${rows}</div>`;
   }
 
-  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>${html}`;
+  if (!anyVisible && filter !== 'all') {
+    const filterLabel = { pending: 'tareas pendientes', soon: 'tareas en los próximos 3 días', ai: 'recomendaciones de IA' };
+    html = `<div class="empty-state"><div class="empty-icon">✅</div><p>No hay ${filterLabel[filter] || 'tareas'} ahora mismo.</p></div>`;
+  }
+
+  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">Pendientes de tu jardín</div><button class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem" data-action="enterPotSelectModeTask" id="pot-select-task-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>${filterChips}${html}`;
 }
 
 // ===== PRODUCTS VIEW =====

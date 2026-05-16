@@ -34,6 +34,7 @@ let photoSelectMode = false;
 let potSelectMode = false;
 let selectedPotsTask = new Set();
 let taskSelectMode = false;
+let taskFilter = 'all';
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -121,7 +122,7 @@ async function navigate(hash) {
   } else if (hash === '#tasks') {
     newRoute = 'tasks';
     headerHtml = '📋 Tareas';
-    html = await renderTasks();
+    html = await renderTasks(taskFilter);
   } else if (hash === '#products') {
     newRoute = 'products';
     headerHtml = '<button class="header-back" data-action="back">←</button> 🧴 Productos';
@@ -306,6 +307,11 @@ async function handleAction(action, target) {
       break;
     }
     case 'clearTaskSelection': { taskSelectMode = false; clearTaskPotSelection(); break; }
+    case 'setTaskFilter': {
+      taskFilter = target.dataset.filter || 'all';
+      mainEl().innerHTML = await renderTasks(taskFilter);
+      break;
+    }
     case 'bulkRecommendProduct':
     case 'bulkExecuteProduct': {
       const execMode = action === 'bulkExecuteProduct' ? 'execute' : 'recommend';
@@ -342,7 +348,7 @@ async function handleAction(action, target) {
       closeModal(); clearTaskPotSelection();
       showToast(`⭐ Producto recomendado en ${ids.length} maceta${ids.length!==1?'s':''}`);
       await new Promise(r => setTimeout(r, 500));
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'confirmBulkExecuteProduct': {
@@ -367,7 +373,7 @@ async function handleAction(action, target) {
       closeModal(); clearTaskPotSelection();
       showToast(`⚡ Ejecutado en ${ids.length} maceta${ids.length!==1?'s':''} — próxima vez calculada`);
       await new Promise(r => setTimeout(r, 500));
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'editPotProducts': {
@@ -383,7 +389,7 @@ async function handleAction(action, target) {
       pot.activeProducts = selected;
       await DB.updatePot(pot);
       closeModal(); showToast('Productos guardados ✓');
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'removeProductFromPot': {
@@ -394,7 +400,7 @@ async function handleAction(action, target) {
         pot.activeProducts = pot.activeProducts.filter(s => s !== productSlug);
         await DB.updatePot(pot);
         showToast('Producto removido ✓');
-        mainEl().innerHTML = await renderTasks();
+        mainEl().innerHTML = await renderTasks(taskFilter);
       }
       break;
     }
@@ -773,7 +779,7 @@ async function handleAction(action, target) {
       const potId = target.dataset.potId, slug = target.dataset.productSlug;
       await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
       showToast('✅ Producto aplicado');
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'openProductMenu': {
@@ -801,7 +807,7 @@ async function handleAction(action, target) {
         closeModal();
         showToast('✅ Fecha actualizada');
         await new Promise(r => setTimeout(r, 500));
-        mainEl().innerHTML = await renderTasks();
+        mainEl().innerHTML = await renderTasks(taskFilter);
       }
       break;
     }
@@ -816,7 +822,7 @@ async function handleAction(action, target) {
       await new Promise(r => setTimeout(r, 500));
       const allLogs = await DB.getTaskLogsByPot(potId);
       console.log('All logs after add:', allLogs);
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'deleteProductFromPot': {
@@ -830,7 +836,7 @@ async function handleAction(action, target) {
       closeModal();
       showToast('🗑️ Producto eliminado');
       await new Promise(r => setTimeout(r, 100));
-      mainEl().innerHTML = await renderTasks();
+      mainEl().innerHTML = await renderTasks(taskFilter);
       break;
     }
     case 'selectCalendarDay': {

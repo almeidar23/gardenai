@@ -771,15 +771,18 @@ const ADMIN_UID = 'BagrWk9uOOWw7ywxbiUyjLlxN8s2'; // almeidar23@gmail.com
 export async function renderSettings() {
   const user = DB.getUser();
   const isAdmin = user?.uid === ADMIN_UID;
-  const [providerRaw, geminiKeyRaw, groqKeyRaw, currentThemeRaw] = await Promise.all([
+  const [providerRaw, geminiKeyRaw, groqKeyRaw, currentThemeRaw, globalCfg] = await Promise.all([
     DB.getSetting('aiProvider'),
     DB.getSetting('geminiApiKey'),
     DB.getSetting('groqApiKey'),
-    DB.getSetting('theme')
+    DB.getSetting('theme'),
+    isAdmin ? DB.getGlobalConfig() : Promise.resolve({})
   ]);
   const provider = providerRaw || 'gemini';
   const geminiKey = geminiKeyRaw || '';
   const groqKey = groqKeyRaw || '';
+  const globalGroqKey = globalCfg.groqApiKey || '';
+  const globalGeminiKey = globalCfg.geminiApiKey || '';
 
   const gMask = geminiKey ? geminiKey.slice(0,8)+'••••••••' : '';
   const rqMask = groqKey ? groqKey.slice(0,8)+'••••••••' : '';
@@ -800,11 +803,24 @@ export async function renderSettings() {
         ${!isMe ? `<button class="btn-icon-danger" data-action="adminDeleteUser" data-uid="${p.uid}" data-email="${escapeHtml(p.email)}" title="Borrar usuario">🗑️</button>` : ''}
       </div>`;
     }).join('');
-    adminSection = `<div class="settings-section"><h3>🛡️ Administrador</h3><div class="glass-card">
-      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">${profiles.length} usuario${profiles.length!==1?'s':''} registrado${profiles.length!==1?'s':''}</div>
-      ${rows || '<div style="color:var(--text-muted);font-size:0.85rem">No hay otros usuarios registrados aún.</div>'}
-      <button class="btn btn-secondary btn-block" style="margin-top:14px" data-action="reloadAdminUsers">↻ Actualizar lista</button>
-    </div></div>`;
+    const gGMask = globalGeminiKey ? globalGeminiKey.slice(0,8)+'••••••••' : 'No configurada';
+    const gRMask = globalGroqKey   ? globalGroqKey.slice(0,8)+'••••••••'   : 'No configurada';
+    adminSection = `<div class="settings-section"><h3>🛡️ Administrador</h3>
+      <div class="glass-card" style="margin-bottom:12px">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">🌐 Claves globales (fallback para todos los usuarios)</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px">Si un usuario no tiene su propia clave, se usa la clave global.</div>
+        <div class="form-group"><label class="form-label" style="font-size:0.75rem">Groq API Key global <span style="color:var(--text-muted)">(actual: ${escapeHtml(gRMask)})</span></label>
+          <input class="form-input" type="password" id="global-groq-key" placeholder="gsk_..." style="font-size:0.8rem"></div>
+        <div class="form-group" style="margin-top:8px"><label class="form-label" style="font-size:0.75rem">Gemini API Key global <span style="color:var(--text-muted)">(actual: ${escapeHtml(gGMask)})</span></label>
+          <input class="form-input" type="password" id="global-gemini-key" placeholder="AIzaSy..." style="font-size:0.8rem"></div>
+        <button class="btn btn-primary btn-block" style="margin-top:8px" data-action="saveGlobalConfig">💾 Guardar claves globales</button>
+      </div>
+      <div class="glass-card">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">${profiles.length} usuario${profiles.length!==1?'s':''} registrado${profiles.length!==1?'s':''}</div>
+        ${rows || '<div style="color:var(--text-muted);font-size:0.85rem">No hay otros usuarios registrados aún.</div>'}
+        <button class="btn btn-secondary btn-block" style="margin-top:14px" data-action="reloadAdminUsers">↻ Actualizar lista</button>
+      </div>
+    </div>`;
   }
 
   const aiSection = isAdmin ? `

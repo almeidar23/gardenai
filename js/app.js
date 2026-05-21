@@ -996,6 +996,24 @@ async function handleAction(action, target) {
       showToast('Configuración guardada ✓');
       break;
     }
+    case 'saveGlobalConfig': {
+      const gGroqKey   = document.getElementById('global-groq-key')?.value?.trim();
+      const gGeminiKey = document.getElementById('global-gemini-key')?.value?.trim();
+      if (gGroqKey && gGroqKey.startsWith('AIzaSy')) {
+        showToast('⚠️ Eso parece una clave de Gemini. Ponla en el campo de Gemini.', 5000); break;
+      }
+      if (gGeminiKey && gGeminiKey.startsWith('gsk_')) {
+        showToast('⚠️ Eso parece una clave de Groq. Ponla en el campo de Groq.', 5000); break;
+      }
+      const update = {};
+      if (gGroqKey)   update.groqApiKey   = gGroqKey;
+      if (gGeminiKey) update.geminiApiKey = gGeminiKey;
+      if (!Object.keys(update).length) { showToast('Escribe al menos una clave para guardar'); break; }
+      await DB.setGlobalConfig(update);
+      showToast('Claves globales guardadas ✓');
+      mainEl().innerHTML = await renderSettings();
+      break;
+    }
     case 'adminDeleteUser': {
       const uid = target.dataset.uid;
       const email = target.dataset.email;

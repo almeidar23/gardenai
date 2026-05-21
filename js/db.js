@@ -370,6 +370,10 @@ const DB = {
     } catch { return {}; }
   },
 
+  async setGlobalConfig(data) {
+    await setDoc(doc(firestoreDb, 'global', 'config'), data, { merge: true });
+  },
+
   // ===== GLOBAL USER REGISTRY (admin use) =====
   async registerUserProfile(user) {
     try {

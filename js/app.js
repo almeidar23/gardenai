@@ -940,7 +940,20 @@ async function handleAction(action, target) {
           const savedKey = await DB.getSetting(provider === 'gemini' ? 'geminiApiKey' : 'groqApiKey');
           const key = inputKey || savedKey;
           if (!key) { show('#f59e0b', '⚠️ No hay clave guardada. Ingresa y guarda primero.'); return; }
-          if (provider !== 'gemini') { show('var(--text-muted)', 'Prueba de Groq: intenta analizar una foto directamente.'); return; }
+          if (provider !== 'gemini') {
+            // Test Groq with a minimal text call
+            const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+              body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Reply with only: OK' }], max_tokens: 5 })
+            }).catch(() => null);
+            if (!groqResp) { show('#ef4444', '❌ Error de red. Verifica tu conexión a internet.'); return; }
+            if (groqResp.status === 401) { show('#ef4444', '❌ Clave inválida (401). Verifica que la copiaste completa.'); return; }
+            if (groqResp.status === 429) { show('#f59e0b', '⚠️ Límite de Groq alcanzado. Espera un momento.'); return; }
+            if (!groqResp.ok) { show('#ef4444', `❌ Error ${groqResp.status}`); return; }
+            show('#16a34a', '✅ ¡Clave de Groq válida y funciona! Ya puedes analizar fotos.');
+            return;
+          }
           const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
           const resp = await fetch(url, {
             method: 'POST',

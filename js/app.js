@@ -35,6 +35,9 @@ let potSelectMode = false;
 let selectedPotsTask = new Set();
 let taskSelectMode = false;
 let taskFilter = 'all';
+let reorderMode = false;
+let reorderPotIds = [];
+let _drag = null;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -107,6 +110,7 @@ async function navigate(hash) {
   clearPotSelection();
   photoSelectMode = false;
   potSelectMode = false;
+  if (reorderMode && hash !== '#home' && hash !== '#' && hash !== '') cancelReorderMode();
 
   const stale = () => token !== _navToken; // true if a newer navigate() started
 
@@ -231,16 +235,22 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectMode': {
       if (!potSelectMode) {
-        // Enter select mode
         potSelectMode = true;
         document.getElementById('pots-grid')?.classList.add('select-mode');
         updatePotBulkBar();
         updatePotSelectAllBtn();
         showToast('Toca macetas para seleccionar');
       } else {
-        // Already in mode — same button now exits
         clearPotSelection();
         showToast('Selección cancelada');
+      }
+      break;
+    }
+    case 'enterReorderMode': {
+      if (!reorderMode) {
+        startReorderMode();
+      } else {
+        await saveReorderMode();
       }
       break;
     }
@@ -1514,6 +1524,111 @@ function updatePotSelectAllBtn() {
   btn.classList.remove('select-all-active');
 }
 
+// ===== POT REORDER MODE =====
+function updateReorderBtn(active) {
+  const btn = document.getElementById('pot-reorder-btn');
+  if (!btn) return;
+  if (active) {
+    btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="rgba(22,163,74,0.2)" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    btn.style.background = 'rgba(22,163,74,0.15)';
+    btn.style.borderColor = '#16a34a';
+    btn.title = 'Guardar orden';
+  } else {
+    btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.title = 'Reordenar macetas';
+  }
+}
+
+function startReorderMode() {
+  reorderMode = true;
+  const grid = document.getElementById('pots-grid');
+  if (!grid) return;
+  grid.classList.add('reorder-mode');
+  reorderPotIds = [...grid.querySelectorAll('.pot-card[data-pot-id]')].map(el => el.dataset.potId);
+  updateReorderBtn(true);
+  // Attach drag listeners to the grid (event delegation)
+  grid.addEventListener('pointerdown', onDragPointerDown);
+  showToast('Arrastra las macetas • Toca ✅ para guardar');
+}
+
+async function saveReorderMode() {
+  cancelReorderMode();
+  if (reorderPotIds.length > 0) {
+    try {
+      await DB.savePotOrder(reorderPotIds);
+      showToast('✅ Orden guardado');
+    } catch(e) { showToast('Error al guardar orden'); }
+  }
+}
+
+function cancelReorderMode() {
+  if (!reorderMode) return;
+  reorderMode = false;
+  reorderPotIds = [];
+  if (_drag) { _drag.clone?.remove(); if (_drag.card) _drag.card.style.opacity = ''; _drag = null; }
+  const grid = document.getElementById('pots-grid');
+  if (grid) { grid.classList.remove('reorder-mode'); grid.removeEventListener('pointerdown', onDragPointerDown); }
+  updateReorderBtn(false);
+}
+
+function onDragPointerDown(e) {
+  if (!reorderMode) return;
+  const card = e.target.closest('.pot-card[data-pot-id]');
+  if (!card || card.classList.contains('pot-card-add')) return;
+  e.preventDefault();
+
+  const rect = card.getBoundingClientRect();
+  const clone = card.cloneNode(true);
+  Object.assign(clone.style, {
+    position: 'fixed', top: rect.top + 'px', left: rect.left + 'px',
+    width: rect.width + 'px', height: rect.height + 'px',
+    pointerEvents: 'none', zIndex: '9999', opacity: '0.92',
+    transform: 'scale(1.05) rotate(1.5deg)',
+    boxShadow: '0 12px 32px rgba(0,0,0,0.35)', transition: 'none',
+    margin: '0'
+  });
+  document.body.appendChild(clone);
+  card.style.opacity = '0.25';
+
+  _drag = { card, clone, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
+
+  document.addEventListener('pointermove', onDragPointerMove, { passive: false });
+  document.addEventListener('pointerup', onDragPointerUp);
+  document.addEventListener('pointercancel', onDragPointerUp);
+}
+
+function onDragPointerMove(e) {
+  if (!_drag) return;
+  e.preventDefault();
+  const { clone, offsetX, offsetY, card } = _drag;
+  clone.style.left = (e.clientX - offsetX) + 'px';
+  clone.style.top  = (e.clientY - offsetY) + 'px';
+
+  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pot-card[data-pot-id]');
+  if (target && target !== card && !target.classList.contains('pot-card-add')) {
+    const grid = document.getElementById('pots-grid');
+    const cards = [...grid.querySelectorAll('.pot-card[data-pot-id]')];
+    const fromIdx = cards.indexOf(card);
+    const toIdx   = cards.indexOf(target);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      grid.insertBefore(card, fromIdx < toIdx ? target.nextSibling : target);
+      reorderPotIds = [...grid.querySelectorAll('.pot-card[data-pot-id]')].map(el => el.dataset.potId);
+    }
+  }
+}
+
+function onDragPointerUp() {
+  if (!_drag) return;
+  _drag.clone.remove();
+  _drag.card.style.opacity = '';
+  document.removeEventListener('pointermove', onDragPointerMove);
+  document.removeEventListener('pointerup', onDragPointerUp);
+  document.removeEventListener('pointercancel', onDragPointerUp);
+  _drag = null;
+}
+
 function clearPotSelection() {
   potSelectMode = false;
   selectedPots.clear();
@@ -1703,6 +1818,7 @@ document.addEventListener('click', (e) => {
   if (nt) {
     e.preventDefault();
     const nav = nt.dataset.navigate;
+    if (reorderMode && nav.startsWith('pot/') && !nav.includes('/photo/')) return;
     if (potSelectMode && nav.startsWith('pot/') && !nav.includes('/photo/')) {
       const potId = nav.split('/')[1];
       if (potId) togglePotSelection(potId);

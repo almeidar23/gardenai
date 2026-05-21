@@ -84,7 +84,8 @@ export async function renderHome() {
     }
     const plantTypes = (pot.plantTypes || (pot.plantType ? [pot.plantType] : [])).map(cleanPlantName).filter(Boolean);
     const plantTypeHtml = plantTypes.length ? `<div class="pot-plant-type">${escapeHtml(plantTypes.join(', '))}</div>` : '';
-    potsHtml += `<div class="glass-card pot-card" data-navigate="pot/${pot.id}" id="pot-card-${pot.id}">
+    potsHtml += `<div class="glass-card pot-card" data-navigate="pot/${pot.id}" data-pot-id="${pot.id}" id="pot-card-${pot.id}">
+      <div class="drag-handle" title="Arrastrar para reordenar"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" opacity="0.5"><circle cx="5" cy="4" r="1.3"/><circle cx="11" cy="4" r="1.3"/><circle cx="5" cy="8" r="1.3"/><circle cx="11" cy="8" r="1.3"/><circle cx="5" cy="12" r="1.3"/><circle cx="11" cy="12" r="1.3"/></svg></div>
       <div class="pot-top-bar">
         ${statusHtml || '<span></span>'}
         <span class="pot-count-badge">${photos.length} foto${photos.length!==1?'s':''}</span>
@@ -94,7 +95,7 @@ export async function renderHome() {
     </div>`;
   }
   potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="enterPotSelectMode" id="pot-select-mode-btn" title="Seleccionar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="enterReorderMode" id="pot-reorder-btn" title="Reordenar macetas"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 

@@ -1643,6 +1643,42 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   cursor: pointer;
 }
 
+/* ===== REORDER MODE ===== */
+.drag-handle {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--accent);
+  cursor: grab;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--accent-glow);
+  z-index: 2;
+  touch-action: none;
+}
+.pots-grid.reorder-mode .pot-card:not(.pot-card-add) {
+  cursor: grab;
+  touch-action: none;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: reorder-pulse 0.3s ease;
+}
+.pots-grid.reorder-mode .drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pots-grid.reorder-mode .pot-card:not(.pot-card-add):active {
+  cursor: grabbing;
+}
+@keyframes reorder-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
 .pots-grid.select-mode .pot-card.pot-selected {
   outline: 3px solid #16a34a;
   outline-offset: 2px;

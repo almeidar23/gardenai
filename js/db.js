@@ -90,7 +90,19 @@ const DB = {
 
   async getAllPots() {
     const snap = await getDocs(col('pots'));
-    return snap.docs.map(d => d.data()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const pots = snap.docs.map(d => d.data());
+    return pots.sort((a, b) => {
+      if (a.sortOrder != null && b.sortOrder != null) return a.sortOrder - b.sortOrder;
+      if (a.sortOrder != null) return -1;
+      if (b.sortOrder != null) return 1;
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+  },
+
+  async savePotOrder(potIds) {
+    await Promise.all(potIds.map((id, index) =>
+      setDoc(docRef('pots', String(id)), { sortOrder: index }, { merge: true })
+    ));
   },
 
   async deletePot(id) {

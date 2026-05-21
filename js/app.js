@@ -125,13 +125,13 @@ async function navigate(hash) {
     html = await renderTasks(taskFilter);
   } else if (hash === '#products') {
     newRoute = 'products';
-    headerHtml = '<button class="header-back" data-action="back">←</button> 🧴 Productos';
+    headerHtml = '<button class="header-back" data-navigate="home">←</button> 🧴 Productos';
     html = await renderProducts();
   } else if (hash.startsWith('#product/')) {
     newRoute = 'product';
     const slug = hash.split('/')[1];
     const prod = await DB.getProduct(slug);
-    headerHtml = `<button class="header-back" data-action="back">←</button> ${escapeHtml(prod?.icon||'🧴')} ${escapeHtml(prod?.name||'Producto')}`;
+    headerHtml = `<button class="header-back" data-navigate="products">←</button> ${escapeHtml(prod?.icon||'🧴')} ${escapeHtml(prod?.name||'Producto')}`;
     html = await renderProductDetail(slug);
   } else if (hash.startsWith('#pot/')) {
     const parts = hash.split('/');
@@ -145,7 +145,7 @@ async function navigate(hash) {
         DB.getPot(Number(parts[1])),
         renderPot(parts[1])
       ]);
-      headerHtml = `<button class="header-back" data-action="back">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
+      headerHtml = `<button class="header-back" data-navigate="home">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
       html = potHtml;
     }
   } else if (hash === '#stats') {

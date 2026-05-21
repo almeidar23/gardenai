@@ -60,11 +60,14 @@ export async function renderHome() {
     Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
     Promise.all(pots.map(p => DB.getAnalysesByPot(p.id)))
   ]);
-  // Precompute all thumb URLs in parallel
+  // Precompute all thumb URLs in parallel — prefer mainPhotoId if set
   const thumbUrls = await Promise.all(pots.map((pot, i) => {
     const photos = photosArr[i];
-    return (photos.length > 0 && (photos[0].blob || photos[0].storageUrl || photos[0].imageData))
-      ? getPhotoURL(photos[0]) : Promise.resolve(null);
+    if (!photos.length) return Promise.resolve(null);
+    const main = pot.mainPhotoId
+      ? (photos.find(p => p.id === pot.mainPhotoId) || photos[0])
+      : photos[0];
+    return (main.blob || main.storageUrl || main.imageData) ? getPhotoURL(main) : Promise.resolve(null);
   }));
   let potsHtml = '';
   for (let i = 0; i < pots.length; i++) {
@@ -372,7 +375,7 @@ function renderSoilAnalysis(r, photoId, switchType, switchLabel) {
   return `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">📊</span><h3>Datos del Suelo</h3>${menuBtn}</div>${ph}${r.confidence?`<div class="mt-8" style="font-size:0.75rem;color:var(--text-muted)">Confianza: ${escapeHtml(r.confidence)}</div>`:''}${r.notes?`<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px">${escapeHtml(r.notes)}</div>`:''}</div>`;
 }
 
-export function renderAnalysisActionsModal(photoId, switchType, switchLabel) {
+export function renderAnalysisActionsModal(photoId, switchType, switchLabel, isMainPhoto = false) {
   return `<div class="modal-overlay" data-action="closeModal">
     <div class="modal-content">
       <div class="modal-handle"></div>
@@ -380,6 +383,7 @@ export function renderAnalysisActionsModal(photoId, switchType, switchLabel) {
       <div style="display:flex;flex-direction:column;gap:10px">
         <button class="btn btn-secondary btn-block" data-action="analyzePhoto" data-photo-id="${photoId}">🔄 Re-analizar</button>
         <button class="btn btn-secondary btn-block" data-action="switchPhotoType" data-photo-id="${photoId}" data-new-type="${switchType}">${escapeHtml(switchLabel)} y analizar</button>
+        <button class="btn ${isMainPhoto ? 'btn-primary' : 'btn-secondary'} btn-block" data-action="setMainPhoto" data-photo-id="${photoId}">${isMainPhoto ? '⭐ Foto principal (activa)' : '⭐ Usar como foto principal'}</button>
         <button class="btn btn-secondary btn-block" data-action="editPhoto" data-photo-id="${photoId}">✏️ Editar</button>
         <button class="btn btn-danger btn-block" data-action="deletePhoto" data-photo-id="${photoId}">🗑️ Eliminar</button>
       </div>

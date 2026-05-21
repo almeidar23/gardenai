@@ -769,10 +769,25 @@ async function handleAction(action, target) {
       break;
     }
     case 'openAnalysisMenu': {
-      const photoId = target.dataset.photoId;
+      const photoId = Number(target.dataset.photoId);
       const switchType = target.dataset.switchType;
       const switchLabel = target.dataset.switchLabel;
-      modalsEl().innerHTML = renderAnalysisActionsModal(photoId, switchType, switchLabel);
+      const photo = await DB.getPhoto(photoId);
+      const pot = photo ? await DB.getPot(photo.potId) : null;
+      const isMain = pot?.mainPhotoId === photoId;
+      modalsEl().innerHTML = renderAnalysisActionsModal(photoId, switchType, switchLabel, isMain);
+      break;
+    }
+    case 'setMainPhoto': {
+      closeModal();
+      const photoId = Number(target.dataset.photoId);
+      const photo = await DB.getPhoto(photoId);
+      if (!photo) { showToast('Error: foto no encontrada'); break; }
+      const pot = await DB.getPot(photo.potId);
+      if (!pot) break;
+      await DB.updatePot({ ...pot, mainPhotoId: photoId });
+      clearPhotoCache();
+      showToast('⭐ Foto principal guardada — se verá en Mis Macetas');
       break;
     }
     case 'analyzePhoto': { closeModal(); await runAnalysis(Number(target.dataset.photoId)); break; }

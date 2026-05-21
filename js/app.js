@@ -239,24 +239,17 @@ async function handleAction(action, target) {
       break;
     }
     case 'togglePotModeMenu': {
-      // If a mode is already active, cancel/save it instead of showing the menu
-      if (potSelectMode) { clearPotSelection(); showToast('Selección cancelada'); break; }
+      // If reorder mode is active, save and exit on second tap
       if (reorderMode) { await saveReorderMode(); break; }
+      // If the menu is already open, close it (toggle off)
+      if (document.getElementById('pot-mode-modal')) { closeModal(); break; }
+      // Otherwise open the menu
       modalsEl().innerHTML = renderPotModeModal();
       break;
     }
     case 'enterPotSelectMode': {
+      // Kept for backward compat (tasks view uses enterPotSelectModeTask)
       closeModal();
-      if (!potSelectMode) {
-        potSelectMode = true;
-        document.getElementById('pots-grid')?.classList.add('select-mode');
-        updatePotBulkBar();
-        updatePotSelectAllBtn();
-        showToast('Toca macetas para seleccionar');
-      } else {
-        clearPotSelection();
-        showToast('Selección cancelada');
-      }
       break;
     }
     case 'enterReorderMode': {

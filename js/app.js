@@ -145,7 +145,7 @@ async function navigate(hash) {
         DB.getPot(Number(parts[1])),
         renderPhotoDetail(parts[3])
       ]);
-      headerHtml = `<button class="header-back header-back-photo" data-navigate="pot/${parts[1]}">←</button> ${escapeHtml(photoPot?.emoji||'🪴')} ${escapeHtml(photoPot?.name||'Foto')}`;
+      headerHtml = `<button class="header-back header-back-photo" data-navigate="pot/${parts[1]}">←</button> Foto · ${escapeHtml(photoPot?.emoji||'🪴')} ${escapeHtml(photoPot?.name||'Maceta')}`;
       html = photoHtml;
     } else {
       newRoute = 'pot';

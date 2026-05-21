@@ -1172,8 +1172,16 @@ async function runAnalysis(photoId, originalBlob = null) {
     }
   } catch (err) {
     console.error('[runAnalysis] error:', err);
-    if (err.message === 'API_KEY_MISSING') showToast('⚠️ Configura tu API Key en Ajustes → IA', 6000);
-    else showToast('❌ ' + err.message, 9000);
+    const m = err.message || '';
+    let msg;
+    if (m === 'API_KEY_MISSING') {
+      msg = '⚠️ No hay API Key configurada. Ve a Ajustes → IA.';
+    } else if (m.toLowerCase().includes('api key') || m.toLowerCase().includes('authentication') || m.toLowerCase().includes('invalid key')) {
+      msg = '❌ API Key de Groq inválida. Ve a Ajustes → IA y verifica tu clave.';
+    } else {
+      msg = '❌ ' + m;
+    }
+    showToast(msg, 9000);
     if (btn) { btn.disabled = false; btn.innerHTML = `✨ Analizar ${photo.type==='analyzer'?'Medidor':'Planta'}`; }
   }
 }
@@ -1712,7 +1720,18 @@ document.addEventListener('change', (e) => {
 // ===== INIT =====
 window.addEventListener('hashchange', () => navigate(window.location.hash));
 window.addEventListener('DOMContentLoaded', async () => {
-  if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('./sw.js'); } catch(e) {} }
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('./sw.js');
+      // When a new SW activates it posts SW_UPDATED — reload to get fresh JS modules
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'SW_UPDATED') {
+          console.log('[SW] New version detected, reloading for fresh modules...');
+          window.location.reload();
+        }
+      });
+    } catch(e) {}
+  }
 
   // Complete any pending Google redirect sign-in (iOS PWA flow)
   await handlePendingRedirect();

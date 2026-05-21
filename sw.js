@@ -1,6 +1,6 @@
 // sw.js — Service Worker for GardenAI PWA
 
-const CACHE_NAME = 'gardenai-v86';
+const CACHE_NAME = 'gardenai-v87';
 const ASSETS = [
   './',
   './index.html',
@@ -23,12 +23,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate — clean old caches
+// Activate — clean old caches, then tell every open tab to reload
+// so ES module instances are replaced with the newly cached versions.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: CACHE_NAME })))
   );
 });
 

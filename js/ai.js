@@ -171,28 +171,63 @@ async function callGroq(base64Image, prompt) {
  * If the preferred provider fails with a rate limit or network error,
  * it automatically retries with the other provider.
  */
-async function callAI(base64Image, prompt) {
+// Exported so app.js can show a countdown on the button
+export let aiRetryAt = null; // timestamp when auto-retry will fire
+
+async function callAI(base64Image, prompt, onRetryCountdown = null) {
   const provider = await DB.getSetting('aiProvider') || 'gemini';
   const primary   = provider === 'groq' ? callGroq   : callGemini;
   const secondary = provider === 'groq' ? callGemini : callGroq;
 
-  try {
-    return await primary(base64Image, prompt);
-  } catch(err) {
-    const isRateLimit = err.message.includes('alcanzado') || err.message.includes('429');
-    const isNetwork   = err.message.includes('conexión') || err.message.includes('tardó');
-    if (isRateLimit || isNetwork) {
-      const fallbackName = provider === 'groq' ? 'Gemini' : 'Groq';
-      try {
-        const result = await secondary(base64Image, prompt);
-        console.warn(`[AI] Switched to ${fallbackName} (primary failed: ${err.message})`);
-        return result;
-      } catch(err2) {
-        throw new Error(`${err.message} | Fallback ${fallbackName} también falló: ${err2.message}`);
-      }
-    }
-    throw err;
+  async function tryCall(fn) {
+    try { return await fn(base64Image, prompt); }
+    catch(err) { return { error: err }; }
   }
+
+  // First attempt: primary provider
+  let res = await tryCall(primary);
+  if (!res?.error) return res;
+  const err1 = res.error;
+
+  const isRateLimit = err1.message.includes('alcanzado') || err1.message.includes('429');
+  const isNetwork   = err1.message.includes('conexión') || err1.message.includes('tardó');
+
+  // Try secondary provider if primary failed with recoverable error
+  if (isRateLimit || isNetwork) {
+    const fallbackName = provider === 'groq' ? 'Gemini' : 'Groq';
+    const res2 = await tryCall(secondary);
+    if (!res2?.error) {
+      console.warn(`[AI] Switched to ${fallbackName} (primary failed: ${err1.message})`);
+      return res2;
+    }
+    const err2 = res2.error;
+
+    // Both failed — if rate-limited, auto-retry primary after 62s
+    if (isRateLimit) {
+      const waitMs = 62000;
+      aiRetryAt = Date.now() + waitMs;
+      if (onRetryCountdown) onRetryCountdown(Math.ceil(waitMs / 1000));
+
+      await new Promise(resolve => {
+        let remaining = Math.ceil(waitMs / 1000);
+        const tick = setInterval(() => {
+          remaining--;
+          if (onRetryCountdown) onRetryCountdown(remaining);
+          if (remaining <= 0) { clearInterval(tick); resolve(); }
+        }, 1000);
+      });
+
+      aiRetryAt = null;
+      // Retry primary once more
+      const res3 = await tryCall(primary);
+      if (!res3?.error) return res3;
+      throw new Error(`${err1.message} | Reintento fallido: ${res3.error.message}`);
+    }
+
+    throw new Error(`${err1.message} | Fallback ${fallbackName} también falló: ${err2.message}`);
+  }
+
+  throw err1;
 }
 
 /**
@@ -201,7 +236,7 @@ async function callAI(base64Image, prompt) {
  * @param {object|null} soilData - optional soil analyzer data for combined analysis
  * @returns {Promise<object>} analysis result
  */
-export async function analyzePlant(imageBlob, soilData = null) {
+export async function analyzePlant(imageBlob, soilData = null, onRetryCountdown = null) {
   const base64 = await compressForAI(imageBlob);
 
   let soilContext = '';
@@ -239,7 +274,7 @@ Incorpora estos datos en tu análisis y recomendaciones.`;
 ${soilContext}
 Si no puedes identificar la planta con certeza, indica tu mejor estimación. Sé específico y práctico en las recomendaciones.`;
 
-  const responseText = await callAI(base64, prompt);
+  const responseText = await callAI(base64, prompt, onRetryCountdown);
   try {
     return JSON.parse(responseText);
   } catch {
@@ -254,7 +289,7 @@ Si no puedes identificar la planta con certeza, indica tu mejor estimación. Sé
  * @param {Blob} imageBlob
  * @returns {Promise<object>} soil data with 6 parameters
  */
-export async function readAnalyzer(imageBlob) {
+export async function readAnalyzer(imageBlob, onRetryCountdown = null) {
   const base64 = await compressForAI(imageBlob);
 
   const prompt = `Eres un sistema OCR especializado en leer medidores/analizadores de suelo para jardinería. Esta foto muestra un analizador de suelo con una pantalla o indicadores que muestran valores.
@@ -273,7 +308,7 @@ Lee y extrae los siguientes 6 parámetros del medidor. Si un parámetro no es vi
 
 Sé preciso al leer los números de la pantalla/indicadores.`;
 
-  const responseText = await callAI(base64, prompt);
+  const responseText = await callAI(base64, prompt, onRetryCountdown);
   try {
     return JSON.parse(responseText);
   } catch {

@@ -8,7 +8,7 @@ import {
   handlePendingRedirect
 } from './firebase-config.js';
 import { captureFromCamera, uploadFromGallery, blobToDataURL } from './camera.js';
-import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured } from './ai.js';
+import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal, renderNotesModal, renderEditNoteModal, renderEditAnalysisModal, renderEditDayModal,
@@ -1039,11 +1039,16 @@ async function runAnalysis(photoId, originalBlob = null) {
   if (!photo) return;
   const blobForAI = originalBlob || photo.imageData || photo.blob;
   const btn = document.getElementById('analyze-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border:2px solid var(--border-glass);border-top-color:var(--bg-primary);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div> Analizando...'; }
+  const setBtn = (html) => { if (btn) { btn.disabled = true; btn.innerHTML = html; } };
+  const spinner = '<div class="spinner" style="width:16px;height:16px;border:2px solid var(--border-glass);border-top-color:var(--bg-primary);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div>';
+  setBtn(`${spinner} Analizando...`);
+
+  const onCountdown = (secs) => setBtn(`⏳ Límite alcanzado — reintentando en ${secs}s...`);
+
   try {
     let result;
     if (photo.type === 'analyzer') {
-      result = await readAnalyzer(blobForAI);
+      result = await readAnalyzer(blobForAI, onCountdown);
     } else {
       const photos = await DB.getPhotosByPot(photo.potId);
       const photoDate = new Date(photo.createdAt).toISOString().slice(0,10);
@@ -1054,7 +1059,7 @@ async function runAnalysis(photoId, originalBlob = null) {
           if (sa?.result) { soilData = sa.result; break; }
         }
       }
-      result = await analyzePlant(blobForAI, soilData);
+      result = await analyzePlant(blobForAI, soilData, onCountdown);
     }
     await DB.addAnalysis({ photoId: photo.id, potId: photo.potId, type: photo.type, result, createdAt: new Date().toISOString() });
     if (photo.type === 'plant' && result.plantType) {

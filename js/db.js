@@ -2,7 +2,7 @@
 
 import { auth, firestoreDb } from './firebase-config.js';
 import {
-  collection, doc, setDoc, getDoc, getDocFromServer, getDocs, deleteDoc, query, where
+  collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const DEFAULT_PRODUCTS = [
@@ -369,8 +369,7 @@ const DB = {
 
   async getGlobalConfig() {
     try {
-      // Always fetch from server (no cache) so the latest admin key is used
-      const snap = await getDocFromServer(doc(firestoreDb, 'global', 'config'));
+      const snap = await getDoc(doc(firestoreDb, 'global', 'config'));
       return snap.exists() ? snap.data() : {};
     } catch { return {}; }
   },

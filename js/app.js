@@ -17,7 +17,7 @@ import {
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderBulkPotNoteModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
-  renderAnalysisActionsModal, renderPotModeModal
+  renderAnalysisActionsModal, renderPotModeModal, renderPotSelectModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -243,13 +243,18 @@ async function handleAction(action, target) {
       if (reorderMode) { await saveReorderMode(); break; }
       // If the menu is already open, close it (toggle off)
       if (document.getElementById('pot-mode-modal')) { closeModal(); break; }
-      // Otherwise open the menu
+      // If select mode is active, show the select-mode menu
+      if (potSelectMode) { modalsEl().innerHTML = renderPotSelectModal(selectedPots.size); break; }
+      // Otherwise open the main menu
       modalsEl().innerHTML = renderPotModeModal();
       break;
     }
     case 'enterPotSelectMode': {
-      // Kept for backward compat (tasks view uses enterPotSelectModeTask)
       closeModal();
+      potSelectMode = true;
+      document.getElementById('pots-grid')?.classList.add('select-mode');
+      updatePotSelectAllBtn();
+      showToast('Toca macetas para seleccionar · toca ✅ para las opciones');
       break;
     }
     case 'enterReorderMode': {
@@ -271,9 +276,9 @@ async function handleAction(action, target) {
           card?.querySelector('.pot-select-check')?.classList.add('checked');
         }
       }
-      updatePotBulkBar();
       updatePotSelectAllBtn();
       showToast(`✅ ${allIds.length} maceta${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
+      if (document.getElementById('pot-mode-modal')) modalsEl().innerHTML = renderPotSelectModal(selectedPots.size);
       break;
     }
     case 'potSelectNone': {
@@ -282,9 +287,9 @@ async function handleAction(action, target) {
         el.classList.remove('pot-selected');
         el.querySelector('.pot-select-check')?.classList.remove('checked');
       });
-      updatePotBulkBar();
       updatePotSelectAllBtn();
       showToast('Selección eliminada');
+      if (document.getElementById('pot-mode-modal')) modalsEl().innerHTML = renderPotSelectModal(0);
       break;
     }
     case 'enterPotSelectModeTask': {
@@ -1615,8 +1620,10 @@ function togglePotSelection(potId) {
   } else {
     selectedPots.add(id); card?.classList.add('pot-selected'); check?.classList.add('checked');
   }
-  if (selectedPots.size > 0) updatePotBulkBar();
-  else document.getElementById('pot-bulk-bar')?.remove();
+  // Update the modal count live if it's open
+  if (document.getElementById('pot-mode-modal')) {
+    modalsEl().innerHTML = renderPotSelectModal(selectedPots.size);
+  }
   updatePotSelectAllBtn();
 }
 
@@ -1748,29 +1755,10 @@ function clearPotSelection() {
     el.classList.remove('pot-selected');
     el.querySelector('.pot-select-check')?.classList.remove('checked');
   });
-  document.getElementById('pot-bulk-bar')?.remove();
+  closeModal();
   const potsGrid = document.getElementById('pots-grid');
   if (potsGrid) potsGrid.classList.remove('select-mode');
   updatePotSelectAllBtn();
-}
-
-function updatePotBulkBar() {
-  let bar = document.getElementById('pot-bulk-bar');
-  if (!bar) { bar = document.createElement('div'); bar.id = 'pot-bulk-bar'; bar.className = 'bulk-action-bar'; document.body.appendChild(bar); }
-  const n = selectedPots.size;
-  const allIds = getAllHomePotIds();
-  const allSelected = allIds.length > 0 && allIds.every(id => selectedPots.has(id));
-  const taskBtn = n > 0 ? `<button class="bulk-btn" data-action="bulkPotTask">📋 Aplicar tarea</button>` : '';
-  const selectAllBtn = !allSelected ? `<button class="bulk-btn" data-action="potSelectAll">☑️ Todo</button>` : '';
-  const clearBtn = n > 0 ? `<button class="bulk-btn" data-action="potSelectNone">○ Ninguna</button>` : '';
-  bar.innerHTML = `
-    <div class="bulk-count">${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}</div>
-    <div class="bulk-actions">
-      ${taskBtn}
-      ${selectAllBtn}
-      ${clearBtn}
-      <button class="bulk-btn bulk-btn-cancel" data-action="clearPotSelection">✕ Cancelar</button>
-    </div>`;
 }
 
 // ===== PHOTO ZOOM (fullscreen overlay) =====

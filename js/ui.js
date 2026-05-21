@@ -636,9 +636,37 @@ export function renderPotModeModal() {
         <button class="btn btn-secondary btn-block" data-action="applyTaskToAll" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
           📋 Aplicar tarea a todas las macetas
         </button>
+        <button class="btn btn-secondary btn-block" data-action="enterPotSelectMode" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Seleccionar macetas
+        </button>
         <button class="btn btn-secondary btn-block" data-action="enterReorderMode" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="4" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="20" cy="8" r="1.5" fill="currentColor"/><circle cx="4" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/><circle cx="20" cy="16" r="1.5" fill="currentColor"/></svg>
           Mover macetas
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+export function renderPotSelectModal(count) {
+  const n = count || 0;
+  return `<div class="modal-overlay" data-action="closeModal" id="pot-mode-modal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-title">${n > 0 ? `${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}` : 'Seleccionar macetas'}</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+        ${n > 0 ? `<button class="btn btn-primary btn-block" data-action="bulkPotTask" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          📋 Aplicar tarea a las ${n} maceta${n!==1?'s':''}
+        </button>` : ''}
+        <button class="btn btn-secondary btn-block" data-action="potSelectAll" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          ☑️ Seleccionar todas
+        </button>
+        <button class="btn btn-secondary btn-block" data-action="potSelectNone" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          ○ Quitar selección
+        </button>
+        <button class="btn btn-danger btn-block" data-action="clearPotSelection" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          ✕ Cancelar selección
         </button>
       </div>
     </div>

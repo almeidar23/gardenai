@@ -823,7 +823,11 @@ export async function renderSettings() {
         <div class="form-group"><label class="form-label" for="groq-key-input">API Key de Groq</label><input class="form-input" type="password" id="groq-key-input" placeholder="Ingresa tu API key" value="${escapeHtml(groqKey)}">${rqMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${rqMask}</div>`:''}</div>
         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:10px;line-height:1.5;margin-bottom:12px">Obtén tu API key gratuita en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">Groq Cloud</a>. No requiere tarjeta.</div>
       </div>
-      <button class="btn btn-primary btn-block" data-action="saveAiSettings" id="save-ai-btn">💾 Guardar Configuración IA</button>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" style="flex:1" data-action="saveAiSettings" id="save-ai-btn">💾 Guardar</button>
+        <button class="btn btn-secondary" style="flex:1" data-action="testAiKey" id="test-ai-btn">🔍 Probar clave</button>
+      </div>
+      <div id="ai-test-result" style="margin-top:10px;font-size:0.75rem;display:none"></div>
     </div></div>` : '';
 
   const currentTheme = currentThemeRaw || 'dark';

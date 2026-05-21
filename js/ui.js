@@ -373,7 +373,7 @@ function renderSoilAnalysis(r, photoId, switchType, switchLabel) {
 
 export function renderAnalysisActionsModal(photoId, switchType, switchLabel) {
   return `<div class="modal-overlay" data-action="closeModal">
-    <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-content">
       <div class="modal-handle"></div>
       <div class="modal-title">Opciones</div>
       <div style="display:flex;flex-direction:column;gap:10px">
@@ -565,7 +565,7 @@ export async function renderEditPotProductsModal(potId) {
   }
 
   return `<div class="modal-overlay" data-action="closeModal">
-    <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-content">
       <div class="modal-handle"></div>
       <div class="modal-title">📋 Productos para ${escapeHtml(pot.name)}</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;max-height:60vh;overflow-y:auto">${checkboxes}</div>

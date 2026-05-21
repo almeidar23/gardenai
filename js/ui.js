@@ -538,7 +538,8 @@ export async function renderProducts() {
   products.sort((a, b) => a.name.localeCompare(b.name));
   let list = '';
   for (const p of products) {
-    list += `<div class="glass-card product-card" data-navigate="product/${p.slug}" id="product-${p.slug}"><div class="product-icon">${escapeHtml(p.icon)}</div><div class="product-info"><div class="product-name">${escapeHtml(p.name)}</div><div class="product-freq">Cada ${escapeHtml(p.defaultFrequencyDays)} días</div></div><span class="product-arrow">›</span></div>`;
+    const notesLine = p.notes ? `<div class="product-notes">${escapeHtml(p.notes)}</div>` : '';
+    list += `<div class="glass-card product-card" data-navigate="product/${p.slug}" id="product-${p.slug}"><div class="product-icon">${escapeHtml(p.icon)}</div><div class="product-info"><div class="product-name">${escapeHtml(p.name)} <span class="product-freq-inline">· ${escapeHtml(String(p.defaultFrequencyDays))} días</span></div>${notesLine}</div><span class="product-arrow">›</span></div>`;
   }
   return `<div class="section-subtitle" style="margin-bottom:16px">Toca un producto para editar · usa ➕ para agregar</div><div class="product-list">${list}</div><button class="fab" data-action="addProduct" title="Nuevo producto">➕</button>`;
 }

@@ -198,6 +198,23 @@ async function callAI(base64Image, prompt, onRetryCountdown = null) {
 
   const isRateLimit = err1.message.includes('alcanzado') || err1.message.includes('429');
   const isNetwork   = err1.message.includes('conexión') || err1.message.includes('tardó');
+  const isAuth      = err1.message.toLowerCase().includes('api key') || err1.message.toLowerCase().includes('inválida') || err1.message.toLowerCase().includes('authentication');
+
+  // If auth error: delete personal key (it may be stale) and retry with global fallback key
+  if (isAuth) {
+    const personalKeyField = provider === 'groq' ? 'groqApiKey' : 'geminiApiKey';
+    const hadPersonalKey = await DB.getSetting(personalKeyField);
+    if (hadPersonalKey) {
+      console.warn(`[AI] Auth error with personal key — auto-clearing and retrying with global key`);
+      await DB.deleteSetting(personalKeyField);
+      const res2 = await tryCall(primary);
+      if (!res2?.error) return res2;
+      // Global key also failed — try secondary provider
+      const res3 = await tryCall(secondary);
+      if (!res3?.error) return res3;
+    }
+    throw new Error(`API Key inválida. Ve a Ajustes → IA, ingresa una clave válida o deja el campo vacío para usar la clave global.`);
+  }
 
   // Try secondary provider if primary failed with recoverable error
   if (isRateLimit || isNetwork) {

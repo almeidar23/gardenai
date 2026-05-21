@@ -218,13 +218,16 @@ async function callAI(base64Image, prompt, onRetryCountdown = null) {
       });
 
       aiRetryAt = null;
-      // Retry primary once more
+      // Retry primary once more after waiting
       const res3 = await tryCall(primary);
       if (!res3?.error) return res3;
-      throw new Error(`${err1.message} | Reintento fallido: ${res3.error.message}`);
+      // Also try secondary one more time (network issue may have been temporary)
+      const res4 = await tryCall(secondary);
+      if (!res4?.error) return res4;
+      throw new Error('La cuota de la IA está agotada. Ve a Ajustes → IA y agrega tu propia API Key de Gemini (gratis en aistudio.google.com).');
     }
 
-    throw new Error(`${err1.message} | Fallback ${fallbackName} también falló: ${err2.message}`);
+    throw new Error(`${err1.message} | Fallback ${fallbackName} también falló: ${err2.message}. Agrega tu propia API Key en Ajustes → IA.`);
   }
 
   throw err1;

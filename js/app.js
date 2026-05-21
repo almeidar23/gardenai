@@ -184,6 +184,7 @@ async function navigate(hash) {
   }
   mainEl().innerHTML = html;
   if (hash.startsWith('#pot/') && hash.includes('/photo/')) initPhotoZoom();
+  if (newRoute === 'product') setupProductDetailForm();
   if (window.location.hash !== hash) history.pushState(null, '', hash);
   updateNav();
   window.scrollTo(0, 0);
@@ -923,16 +924,23 @@ async function handleAction(action, target) {
       break;
     }
     case 'saveProduct': {
+      // Handled by form submit in setupProductDetailForm — this is a no-op fallback
+      break;
+    }
+    case 'cancelProduct': {
+      navigate('#products');
+      break;
+    }
+    case 'deleteProduct': {
       const slug = target.dataset.slug;
-      const product = await DB.getProduct(slug);
-      product.defaultFrequencyDays = parseInt(document.getElementById('product-freq').value) || product.defaultFrequencyDays;
-      product.notes = document.getElementById('product-notes').value;
-      await DB.updateProduct(product);
-      showToast('Producto guardado ✓');
-      setTimeout(async () => { mainEl().innerHTML = await renderProductDetail(slug); }, 300);
+      if (!confirm('¿Eliminar este producto? Se borrarán también sus registros de tareas.')) break;
+      await DB.deleteProduct(slug);
+      showToast('Producto eliminado');
+      navigate('#products');
       break;
     }
     case 'editProductModal': {
+      // Legacy — no longer used from product detail; kept for safety
       const slug = target.dataset.slug;
       const product = await DB.getProduct(slug);
       modalsEl().innerHTML = renderProductModal(product);
@@ -950,6 +958,7 @@ async function handleAction(action, target) {
         await DB.updateProduct(product);
         showToast('Foto agregada ✓');
         mainEl().innerHTML = await renderProductDetail(slug);
+        setupProductDetailForm();
       } catch(e) { /* cancelled */ }
       break;
     }
@@ -960,6 +969,7 @@ async function handleAction(action, target) {
       await DB.updateProduct(product);
       showToast('Foto eliminada');
       mainEl().innerHTML = await renderProductDetail(slug);
+      setupProductDetailForm();
       break;
     }
     case 'testAiKey': {
@@ -1388,6 +1398,29 @@ function setupProductModalForm() {
     closeModal();
     if (currentRoute === 'products') mainEl().innerHTML = await renderProducts();
     else if (currentRoute === 'product') navigate(window.location.hash);
+  });
+}
+
+function setupProductDetailForm() {
+  document.querySelectorAll('#product-detail-form .emoji-pick-detail').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#product-detail-form .emoji-pick-detail').forEach(b => { b.style.borderColor='var(--border-glass)'; b.style.background='var(--bg-secondary)'; });
+      btn.style.borderColor='var(--accent)'; btn.style.background='var(--accent-glow)';
+      document.getElementById('product-detail-icon').value = btn.dataset.emoji;
+    });
+  });
+  document.getElementById('product-detail-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const slug = e.target.dataset.slug;
+    const name = document.getElementById('product-detail-name').value.trim();
+    const icon = document.getElementById('product-detail-icon').value;
+    const freq = parseInt(document.getElementById('product-detail-freq').value) || 7;
+    const notes = document.getElementById('product-detail-notes').value;
+    if (!name) { showToast('Ingresa un nombre'); return; }
+    const product = await DB.getProduct(slug);
+    await DB.updateProduct({ ...product, name, icon, defaultFrequencyDays: freq, notes });
+    showToast('Producto guardado ✓');
+    navigate(`#product/${slug}`);
   });
 }
 

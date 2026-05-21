@@ -531,6 +531,8 @@ export async function renderTasks(filter = 'all') {
 }
 
 // ===== PRODUCTS VIEW =====
+const PRODUCT_EMOJIS = ['💧','🧪','🟡','🟠','⚗️','🔶','🌿','💊','🧴','🔬','🌱','☘️','🍃','🌾','🫧','🧫','⚡','🪣','🫙','🔩','🧂','🪴','💦','🌊','🌡️','☀️'];
+
 export async function renderProducts() {
   const products = await DB.getAllProducts();
   products.sort((a, b) => a.name.localeCompare(b.name));
@@ -545,16 +547,43 @@ export async function renderProducts() {
 export async function renderProductDetail(slug) {
   const product = await DB.getProduct(slug);
   if (!product) return '<div class="empty-state"><p>Producto no encontrado</p></div>';
+
+  // Icon picker
+  let ep = '<div class="emoji-grid" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">';
+  for (const e of PRODUCT_EMOJIS) {
+    const sel = e === product.icon ? 'border-color:var(--accent);background:var(--accent-glow)' : '';
+    ep += `<button type="button" class="emoji-pick-detail" data-emoji="${e}" style="font-size:1.4rem;padding:6px;border-radius:8px;border:2px solid var(--border-glass);${sel};cursor:pointer;background:var(--bg-secondary)">${e}</button>`;
+  }
+  ep += '</div>';
+
+  // Photos
   let photosHtml = '';
   if (product.photos?.length) {
     for (let i = 0; i < product.photos.length; i++) {
       const dataUrl = typeof product.photos[i] === 'string' ? product.photos[i] : await blobToDataURL(product.photos[i]);
-      photosHtml += `<div class="product-photo-thumb"><img src="${dataUrl}" alt="${product.name}"><button class="delete-x" data-action="deleteProductPhoto" data-slug="${slug}" data-index="${i}">✕</button></div>`;
+      photosHtml += `<div class="product-photo-thumb"><img src="${dataUrl}" alt="${escapeHtml(product.name)}"><button type="button" class="delete-x" data-action="deleteProductPhoto" data-slug="${slug}" data-index="${i}">✕</button></div>`;
     }
   }
-  return `<div class="flex items-center justify-between mb-4" style="gap:8px"><div class="section-subtitle">Cada ${escapeHtml(product.defaultFrequencyDays)} días${product.notes ? ' · ' + escapeHtml(product.notes.slice(0,40)) : ''}</div><button class="btn btn-secondary btn-icon" data-action="editProductModal" data-slug="${slug}" title="Editar">✏️</button></div>
-    <div class="glass-card" style="margin-bottom:16px"><div class="form-group"><label class="form-label">Frecuencia global (días)</label><input class="form-input" type="number" id="product-freq" min="1" max="365" value="${product.defaultFrequencyDays}"></div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="product-notes" placeholder="Notas sobre este producto...">${escapeHtml(product.notes||'')}</textarea></div><button class="btn btn-primary btn-block" data-action="saveProduct" data-slug="${slug}" id="save-product-btn">💾 Guardar</button></div>
-    <div class="glass-card"><div class="form-label">Fotos del producto</div><div class="product-photos">${photosHtml}<button class="btn btn-secondary btn-sm" data-action="addProductPhoto" data-slug="${slug}" id="add-product-photo-btn">➕ Foto</button></div></div>`;
+
+  return `<form id="product-detail-form" data-slug="${slug}">
+    <div class="glass-card" style="margin-bottom:16px">
+      <div class="form-group"><label class="form-label">Icono</label>${ep}<input type="hidden" id="product-detail-icon" value="${escapeHtml(product.icon)}"></div>
+      <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" type="text" id="product-detail-name" value="${escapeHtml(product.name)}" placeholder="Ej: Fungicida" required></div>
+      <div class="form-group"><label class="form-label">Frecuencia global (días)</label><input class="form-input" type="number" id="product-detail-freq" min="1" max="365" value="${product.defaultFrequencyDays}"></div>
+      <div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="product-detail-notes" placeholder="Descripción, dosis, observaciones...">${escapeHtml(product.notes||'')}</textarea></div>
+      <div class="btn-group" style="margin-top:8px">
+        <button type="submit" class="btn btn-primary btn-block" id="save-product-btn">💾 Guardar</button>
+        <button type="button" class="btn btn-secondary" data-action="cancelProduct">Cancelar</button>
+      </div>
+    </div>
+    <div class="glass-card" style="margin-bottom:16px">
+      <div class="form-label" style="margin-bottom:10px">Fotos del producto</div>
+      <div class="product-photos">${photosHtml}<button type="button" class="btn btn-secondary btn-sm" data-action="addProductPhoto" data-slug="${slug}" id="add-product-photo-btn">➕ Foto</button></div>
+    </div>
+    <div class="glass-card">
+      <button type="button" class="btn btn-danger btn-block" data-action="deleteProduct" data-slug="${slug}" id="delete-product-btn">🗑️ Eliminar Producto</button>
+    </div>
+  </form>`;
 }
 
 // ===== MODALS =====
@@ -880,8 +909,6 @@ export async function renderSettings() {
 }
 
 // ===== PRODUCT MODAL =====
-const PRODUCT_EMOJIS = ['💧','🧪','🟡','🟠','⚗️','🔶','🌿','💊','🧴','🔬','🌱','☘️','🍃','🌾','🫧','🧫','⚡','🪣','🫙','🔩','🧂','🪴','💦','🌊','🌡️','☀️'];
-
 export function renderProductModal(product = null) {
   const isEdit = !!product;
   const icon = product?.icon || '🌿';

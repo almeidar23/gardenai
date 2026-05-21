@@ -933,11 +933,14 @@ async function handleAction(action, target) {
       const show = (color, msg) => { resultEl.style.color = color; resultEl.textContent = msg; };
       (async () => {
         try {
-          const provider = document.getElementById('ai-provider')?.value || 'gemini';
-          const inputKey = provider === 'gemini'
-            ? document.getElementById('gemini-key-input')?.value?.trim()
-            : document.getElementById('groq-key-input')?.value?.trim();
-          const savedKey = await DB.getSetting(provider === 'gemini' ? 'geminiApiKey' : 'groqApiKey');
+          // For non-admin there's no provider select — infer from which field exists
+          const providerSelect = document.getElementById('ai-provider');
+          const groqInput = document.getElementById('groq-key-input');
+          const provider = providerSelect?.value || (groqInput ? 'groq' : 'gemini');
+          const inputKey = provider === 'groq'
+            ? groqInput?.value?.trim()
+            : document.getElementById('gemini-key-input')?.value?.trim();
+          const savedKey = await DB.getSetting(provider === 'groq' ? 'groqApiKey' : 'geminiApiKey');
           const key = inputKey || savedKey;
           if (!key) { show('#f59e0b', '⚠️ No hay clave guardada. Ingresa y guarda primero.'); return; }
           if (provider !== 'gemini') {
@@ -989,7 +992,12 @@ async function handleAction(action, target) {
         break;
       }
 
-      if (providerEl) await DB.setSetting('aiProvider', providerEl.value);
+      if (providerEl) {
+        await DB.setSetting('aiProvider', providerEl.value);
+      } else if (groqKey) {
+        // Non-admin saved a Groq key — make sure Groq is the active provider
+        await DB.setSetting('aiProvider', 'groq');
+      }
       if (geminiKey) await DB.setSetting('geminiApiKey', geminiKey);
       if (groqKey) await DB.setSetting('groqApiKey', groqKey);
 

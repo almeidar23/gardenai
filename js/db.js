@@ -2,7 +2,7 @@
 
 import { auth, firestoreDb } from './firebase-config.js';
 import {
-  collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where
+  collection, doc, setDoc, getDoc, getDocFromServer, getDocs, deleteDoc, query, where
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const DEFAULT_PRODUCTS = [
@@ -340,6 +340,10 @@ const DB = {
     await setDoc(docRef('settings', key), { key, value });
   },
 
+  async deleteSetting(key) {
+    await deleteDoc(docRef('settings', key));
+  },
+
   // ===== CLEAR ALL =====
   async clearAllData() {
     for (const c of ['pots', 'photos', 'analyses', 'taskLogs', 'settings', 'products', 'notes']) {
@@ -365,7 +369,8 @@ const DB = {
 
   async getGlobalConfig() {
     try {
-      const snap = await getDoc(doc(firestoreDb, 'global', 'config'));
+      // Always fetch from server (no cache) so the latest admin key is used
+      const snap = await getDocFromServer(doc(firestoreDb, 'global', 'config'));
       return snap.exists() ? snap.data() : {};
     } catch { return {}; }
   },

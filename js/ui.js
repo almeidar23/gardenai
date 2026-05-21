@@ -838,7 +838,7 @@ export async function renderSettings() {
         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:10px;line-height:1.5;margin-bottom:12px">Obtén tu API key en <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">Google AI Studio</a>.</div>
       </div>` : ''}
       <div id="groq-settings" style="${isAdmin?`display:${provider==='groq'?'block':'none'};`:''}margin-top:${isAdmin?'16':'0'}px;${isAdmin?'padding-top:16px;border-top:1px solid var(--border-glass)':''}">
-        <div class="form-group"><label class="form-label" for="groq-key-input">API Key de Groq${!isAdmin?' (tu clave personal)':''}</label><input class="form-input" type="password" id="groq-key-input" placeholder="gsk_..." value="${escapeHtml(groqKey)}">${rqMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${rqMask}</div>`:''}</div>
+        <div class="form-group"><label class="form-label" for="groq-key-input">API Key de Groq${!isAdmin?' (tu clave personal)':''}</label><input class="form-input" type="password" id="groq-key-input" placeholder="gsk_..." value="${escapeHtml(groqKey)}">${rqMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${rqMask} <button data-action="clearGroqKey" style="background:none;border:none;color:var(--text-danger,#ef4444);cursor:pointer;font-size:0.7rem;padding:0 4px;vertical-align:middle">✕ Borrar</button></div>`:''}</div>
         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;line-height:1.5;margin-bottom:12px">Gratis en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com/keys</a>. No requiere tarjeta.</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:4px">

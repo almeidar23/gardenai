@@ -352,7 +352,7 @@ async function callVisionFree(blobOrDataUrl, prompt) {
     const d = await resp.json();
     return d.choices?.[0]?.message?.content || '';
   } else {
-    const resp = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

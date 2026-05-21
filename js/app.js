@@ -997,6 +997,12 @@ async function handleAction(action, target) {
       showToast('✅ Configuración guardada');
       break;
     }
+    case 'clearGroqKey': {
+      await DB.deleteSetting('groqApiKey');
+      showToast('✅ Clave personal eliminada. Se usará la clave global del sistema.');
+      mainEl().innerHTML = await renderSettings();
+      break;
+    }
     case 'saveGlobalConfig': {
       const gGroqKey   = document.getElementById('global-groq-key')?.value?.trim();
       const gGeminiKey = document.getElementById('global-gemini-key')?.value?.trim();

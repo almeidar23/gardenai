@@ -17,7 +17,7 @@ import {
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderBulkPotNoteModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
-  renderAnalysisActionsModal, renderPotModeModal, renderPotSelectModal
+  renderAnalysisActionsModal, renderPotModeModal, renderApplyTaskModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -31,7 +31,6 @@ const modalsEl = () => document.getElementById('modals');
 let currentRoute = '';
 let selectedPhotos = new Set();
 let photoSelectMode = false;
-let potSelectMode = false;
 let selectedPotsTask = new Set();
 let taskSelectMode = false;
 let taskFilter = 'all';
@@ -109,7 +108,6 @@ async function navigate(hash) {
   clearPhotoSelection();
   clearPotSelection();
   photoSelectMode = false;
-  potSelectMode = false;
   if (reorderMode && hash !== '#home' && hash !== '#' && hash !== '') cancelReorderMode();
 
   const stale = () => token !== _navToken; // true if a newer navigate() started
@@ -239,22 +237,38 @@ async function handleAction(action, target) {
       break;
     }
     case 'togglePotModeMenu': {
-      // If reorder mode is active, save and exit on second tap
       if (reorderMode) { await saveReorderMode(); break; }
-      // If the menu is already open, close it (toggle off)
-      if (document.getElementById('pot-mode-modal')) { closeModal(); break; }
-      // If select mode is active, show the select-mode menu
-      if (potSelectMode) { modalsEl().innerHTML = renderPotSelectModal(selectedPots.size); break; }
-      // Otherwise open the main menu
+      if (document.getElementById('pot-mode-modal') || document.getElementById('apply-task-modal')) { closeModal(); break; }
       modalsEl().innerHTML = renderPotModeModal();
       break;
     }
-    case 'enterPotSelectMode': {
+    case 'openApplyTask': {
+      const [products, pots] = await Promise.all([DB.getAllProducts(), DB.getAllPots()]);
+      products.sort((a,b) => a.name.localeCompare(b.name));
+      modalsEl().innerHTML = renderApplyTaskModal(products, pots);
+      // Wire up product highlight
+      modalsEl().querySelectorAll('.apply-product-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          modalsEl().querySelectorAll('.apply-product-btn').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-secondary'); b.style.borderColor=''; });
+          btn.classList.remove('btn-secondary'); btn.classList.add('btn-primary');
+          document.getElementById('apply-task-slug').value = btn.dataset.slug;
+        });
+      });
+      break;
+    }
+    case 'confirmApplyTask': {
+      const slug = document.getElementById('apply-task-slug')?.value;
+      if (!slug) { showToast('Selecciona un producto primero'); break; }
+      const checkedPots = [...modalsEl().querySelectorAll('.apply-pot-check:checked')].map(el => el.dataset.potId);
+      if (!checkedPots.length) { showToast('Selecciona al menos una maceta'); break; }
+      for (const potId of checkedPots) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
       closeModal();
-      potSelectMode = true;
-      document.getElementById('pots-grid')?.classList.add('select-mode');
-      updatePotSelectAllBtn();
-      showToast('Toca macetas para seleccionar · toca ✅ para las opciones');
+      showToast(`✅ Aplicado a ${checkedPots.length} maceta${checkedPots.length!==1?'s':''}`);
+      break;
+    }
+    case 'enterPotSelectMode': {
+      // No longer used — kept so old references don't crash
+      closeModal();
       break;
     }
     case 'enterReorderMode': {
@@ -264,32 +278,6 @@ async function handleAction(action, target) {
       } else {
         await saveReorderMode();
       }
-      break;
-    }
-    case 'potSelectAll': {
-      const allIds = getAllHomePotIds();
-      for (const id of allIds) {
-        if (!selectedPots.has(id)) {
-          selectedPots.add(id);
-          const card = document.getElementById(`pot-card-${id}`);
-          card?.classList.add('pot-selected');
-          card?.querySelector('.pot-select-check')?.classList.add('checked');
-        }
-      }
-      updatePotSelectAllBtn();
-      showToast(`✅ ${allIds.length} maceta${allIds.length !== 1 ? 's' : ''} seleccionada${allIds.length !== 1 ? 's' : ''}`);
-      if (document.getElementById('pot-mode-modal')) modalsEl().innerHTML = renderPotSelectModal(selectedPots.size);
-      break;
-    }
-    case 'potSelectNone': {
-      selectedPots.clear();
-      document.querySelectorAll('.pot-card.pot-selected').forEach(el => {
-        el.classList.remove('pot-selected');
-        el.querySelector('.pot-select-check')?.classList.remove('checked');
-      });
-      updatePotSelectAllBtn();
-      showToast('Selección eliminada');
-      if (document.getElementById('pot-mode-modal')) modalsEl().innerHTML = renderPotSelectModal(0);
       break;
     }
     case 'enterPotSelectModeTask': {
@@ -659,51 +647,44 @@ async function handleAction(action, target) {
       if (p) navigate(`#pot/${p.potId}/photo/${pid}`);
       break;
     }
-    case 'togglePotSelect': {
-      const potId = target.dataset.potId;
-      if (potId) togglePotSelection(potId);
-      break;
-    }
     case 'clearPhotoSelection': { clearPhotoSelection(); break; }
-    case 'clearPotSelection': { clearPotSelection(); break; }
-    case 'applyTaskToAll': {
-      // Select all pots automatically then open the task modal
-      const allIds = getAllHomePotIds();
-      selectedPots.clear();
-      allIds.forEach(id => selectedPots.add(id));
-      const products = await DB.getAllProducts();
-      products.sort((a,b) => a.name.localeCompare(b.name));
-      modalsEl().innerHTML = renderBulkPotTaskModal(products, selectedPots.size);
-      break;
-    }
     case 'bulkPotTask': {
-      const products = await DB.getAllProducts();
-      products.sort((a,b) => a.name.localeCompare(b.name));
-      modalsEl().innerHTML = renderBulkPotTaskModal(products, selectedPots.size);
+      // Legacy — redirect to new combined modal
+      const [products2, pots2] = await Promise.all([DB.getAllProducts(), DB.getAllPots()]);
+      products2.sort((a,b) => a.name.localeCompare(b.name));
+      modalsEl().innerHTML = renderApplyTaskModal(products2, pots2);
+      modalsEl().querySelectorAll('.apply-product-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          modalsEl().querySelectorAll('.apply-product-btn').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-secondary'); });
+          btn.classList.remove('btn-secondary'); btn.classList.add('btn-primary');
+          document.getElementById('apply-task-slug').value = btn.dataset.slug;
+        });
+      });
       break;
     }
     case 'confirmBulkPotTask': {
+      // Legacy slug-based confirm still works for tasks view
       const slug = target.dataset.slug;
-      const ids = [...selectedPots];
+      const ids = [...selectedPotsTask];
       for (const potId of ids) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
-      closeModal(); clearPotSelection();
+      closeModal(); clearTaskSelection();
       showToast(`✅ Aplicado a ${ids.length} maceta${ids.length!==1?'s':''}`);
       break;
     }
     case 'bulkPotNote': {
       closeModal();
-      modalsEl().innerHTML = renderBulkPotNoteModal(selectedPots.size);
+      modalsEl().innerHTML = renderBulkPotNoteModal(selectedPotsTask.size);
       break;
     }
     case 'confirmBulkPotNote': {
       const noteText = document.getElementById('bulk-pot-note-input')?.value || '';
       if (!noteText.trim()) { showToast('Escribe algo antes de guardar'); break; }
-      const ids = [...selectedPots];
+      const ids = [...selectedPotsTask];
       const now = new Date().toISOString();
       for (const potId of ids) {
         await DB.addNote({ potId: Number(potId), text: noteText, createdAt: now });
       }
-      closeModal(); clearPotSelection();
+      closeModal(); clearTaskSelection();
       showToast(`📝 Nota guardada en ${ids.length} maceta${ids.length!==1?'s':''}`);
       break;
     }
@@ -1608,39 +1589,10 @@ function updateTaskBulkBar() {
     </div>`;
 }
 
-// ===== POT SELECTION (HOME) =====
-let selectedPots = new Set();
-
-function togglePotSelection(potId) {
-  const id = String(potId);
-  const card = document.getElementById(`pot-card-${id}`);
-  const check = card?.querySelector('.pot-select-check');
-  if (selectedPots.has(id)) {
-    selectedPots.delete(id); card?.classList.remove('pot-selected'); check?.classList.remove('checked');
-  } else {
-    selectedPots.add(id); card?.classList.add('pot-selected'); check?.classList.add('checked');
-  }
-  // Update the modal count live if it's open
-  if (document.getElementById('pot-mode-modal')) {
-    modalsEl().innerHTML = renderPotSelectModal(selectedPots.size);
-  }
-  updatePotSelectAllBtn();
-}
-
 function getAllHomePotIds() {
   return [...document.querySelectorAll('.pot-card[data-navigate^="pot/"]')]
     .map(el => el.dataset.navigate.split('/')[1])
     .filter(Boolean);
-}
-
-function updatePotSelectAllBtn() {
-  const btn = document.getElementById('pot-select-mode-btn');
-  if (!btn) return;
-  const svgOutlined = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const svgCancel = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#dc2626"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>`;
-  btn.innerHTML = potSelectMode ? svgCancel : svgOutlined;
-  btn.classList.toggle('select-mode-active', potSelectMode);
-  btn.classList.remove('select-all-active');
 }
 
 // ===== POT REORDER MODE =====
@@ -1749,16 +1701,7 @@ function onDragPointerUp() {
 }
 
 function clearPotSelection() {
-  potSelectMode = false;
-  selectedPots.clear();
-  document.querySelectorAll('.pot-card.pot-selected').forEach(el => {
-    el.classList.remove('pot-selected');
-    el.querySelector('.pot-select-check')?.classList.remove('checked');
-  });
   closeModal();
-  const potsGrid = document.getElementById('pots-grid');
-  if (potsGrid) potsGrid.classList.remove('select-mode');
-  updatePotSelectAllBtn();
 }
 
 // ===== PHOTO ZOOM (fullscreen overlay) =====
@@ -1920,11 +1863,6 @@ document.addEventListener('click', (e) => {
     e.preventDefault();
     const nav = nt.dataset.navigate;
     if (reorderMode && nav.startsWith('pot/') && !nav.includes('/photo/')) return;
-    if (potSelectMode && nav.startsWith('pot/') && !nav.includes('/photo/')) {
-      const potId = nav.split('/')[1];
-      if (potId) togglePotSelection(potId);
-      return;
-    }
     showLoading();
     navigate('#' + nav);
     return;

@@ -633,12 +633,8 @@ export function renderPotModeModal() {
       <div class="modal-handle"></div>
       <div class="modal-title">🪴 Mis Macetas</div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-        <button class="btn btn-secondary btn-block" data-action="applyTaskToAll" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          📋 Aplicar tarea a todas las macetas
-        </button>
-        <button class="btn btn-secondary btn-block" data-action="enterPotSelectMode" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Seleccionar macetas
+        <button class="btn btn-secondary btn-block" data-action="openApplyTask" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
+          📋 Aplicar tarea
         </button>
         <button class="btn btn-secondary btn-block" data-action="enterReorderMode" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="4" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="20" cy="8" r="1.5" fill="currentColor"/><circle cx="4" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/><circle cx="20" cy="16" r="1.5" fill="currentColor"/></svg>
@@ -649,26 +645,33 @@ export function renderPotModeModal() {
   </div>`;
 }
 
-export function renderPotSelectModal(count) {
-  const n = count || 0;
-  return `<div class="modal-overlay" data-action="closeModal" id="pot-mode-modal">
+export function renderApplyTaskModal(products, pots) {
+  const productButtons = products.map(p =>
+    `<button type="button" class="apply-product-btn btn btn-secondary" data-slug="${escapeHtml(p.slug)}" style="justify-content:flex-start;gap:10px;padding:10px 14px;width:100%">
+      <span style="font-size:1.2rem">${escapeHtml(p.icon)}</span>
+      <span style="flex:1;text-align:left">${escapeHtml(p.name)}</span>
+      <span style="color:var(--text-muted);font-size:0.72rem">c/${escapeHtml(String(p.defaultFrequencyDays))}d</span>
+    </button>`
+  ).join('');
+
+  const potRows = pots.map(p =>
+    `<label style="display:flex;align-items:center;gap:10px;padding:8px 6px;cursor:pointer;border-radius:8px">
+      <input type="checkbox" class="apply-pot-check" data-pot-id="${p.id}" checked style="width:18px;height:18px;flex-shrink:0;accent-color:var(--accent)">
+      <span style="font-size:1.1rem">${escapeHtml(p.emoji||'🪴')}</span>
+      <span style="font-size:0.9rem">${escapeHtml(p.name)}</span>
+    </label>`
+  ).join('');
+
+  return `<div class="modal-overlay" data-action="closeModal" id="apply-task-modal">
     <div class="modal-content">
       <div class="modal-handle"></div>
-      <div class="modal-title">${n > 0 ? `${n} maceta${n!==1?'s':''} seleccionada${n!==1?'s':''}` : 'Seleccionar macetas'}</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-        ${n > 0 ? `<button class="btn btn-primary btn-block" data-action="bulkPotTask" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          📋 Aplicar tarea a las ${n} maceta${n!==1?'s':''}
-        </button>` : ''}
-        <button class="btn btn-secondary btn-block" data-action="potSelectAll" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          ☑️ Seleccionar todas
-        </button>
-        <button class="btn btn-secondary btn-block" data-action="potSelectNone" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          ○ Quitar selección
-        </button>
-        <button class="btn btn-danger btn-block" data-action="clearPotSelection" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          ✕ Cancelar selección
-        </button>
-      </div>
+      <div class="modal-title">📋 Aplicar Tarea</div>
+      <input type="hidden" id="apply-task-slug" value="">
+      <div class="form-label" style="margin-bottom:8px">¿Qué aplicaste?</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:16px">${productButtons}</div>
+      <div class="form-label" style="margin-bottom:6px">¿A cuáles macetas?</div>
+      <div style="display:flex;flex-direction:column;max-height:180px;overflow-y:auto;margin-bottom:16px;border:1px solid var(--border-glass);border-radius:10px;padding:4px 8px">${potRows}</div>
+      <button class="btn btn-primary btn-block" data-action="confirmApplyTask" id="confirm-apply-task-btn">✅ Aplicar</button>
     </div>
   </div>`;
 }

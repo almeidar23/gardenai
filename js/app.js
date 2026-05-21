@@ -1420,7 +1420,7 @@ function setupProductDetailForm() {
     const product = await DB.getProduct(slug);
     await DB.updateProduct({ ...product, name, icon, defaultFrequencyDays: freq, notes });
     showToast('Producto guardado ✓');
-    navigate(`#product/${slug}`);
+    navigate('#products');
   });
 }
 

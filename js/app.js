@@ -930,43 +930,35 @@ async function handleAction(action, target) {
       resultEl.style.color = 'var(--text-muted)';
       resultEl.textContent = '⏳ Probando...';
       testBtn.disabled = true;
-      try {
-        const provider = document.getElementById('ai-provider')?.value || 'gemini';
-        const inputKey = provider === 'gemini'
-          ? document.getElementById('gemini-key-input')?.value?.trim()
-          : document.getElementById('groq-key-input')?.value?.trim();
-        const savedKey = await DB.getSetting(provider === 'gemini' ? 'geminiApiKey' : 'groqApiKey');
-        const key = inputKey || savedKey;
-        if (!key) { resultEl.style.color = '#f59e0b'; resultEl.textContent = '⚠️ No hay clave guardada. Ingresa y guarda primero.'; break; }
-
-        // Minimal text call — no image, no quota for vision
-        const url = provider === 'gemini'
-          ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`
-          : null;
-
-        if (provider === 'gemini') {
+      const show = (color, msg) => { resultEl.style.color = color; resultEl.textContent = msg; };
+      (async () => {
+        try {
+          const provider = document.getElementById('ai-provider')?.value || 'gemini';
+          const inputKey = provider === 'gemini'
+            ? document.getElementById('gemini-key-input')?.value?.trim()
+            : document.getElementById('groq-key-input')?.value?.trim();
+          const savedKey = await DB.getSetting(provider === 'gemini' ? 'geminiApiKey' : 'groqApiKey');
+          const key = inputKey || savedKey;
+          if (!key) { show('#f59e0b', '⚠️ No hay clave guardada. Ingresa y guarda primero.'); return; }
+          if (provider !== 'gemini') { show('var(--text-muted)', 'Prueba de Groq: intenta analizar una foto directamente.'); return; }
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
           const resp = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: 'Reply with only: OK' }] }], generationConfig: { maxOutputTokens: 5 } })
           });
           const data = await resp.json();
-          if (resp.status === 401) { resultEl.style.color = '#ef4444'; resultEl.textContent = '❌ Clave inválida (401). Verifica que la copiaste bien.'; break; }
-          if (resp.status === 429) { resultEl.style.color = '#f59e0b'; resultEl.textContent = '⚠️ Clave válida pero cuota agotada (429). Espera unos minutos o crea una nueva clave.'; break; }
-          if (resp.status === 403) { resultEl.style.color = '#ef4444'; resultEl.textContent = '❌ Acceso denegado (403). La clave puede tener restricciones de API.'; break; }
-          if (!resp.ok) { resultEl.style.color = '#ef4444'; resultEl.textContent = `❌ Error ${resp.status}: ${data?.error?.message || 'desconocido'}`; break; }
-          resultEl.style.color = '#16a34a';
-          resultEl.textContent = `✅ Clave funciona correctamente. Respuesta: "${data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'OK'}"`;
-        } else {
-          resultEl.style.color = 'var(--text-muted)';
-          resultEl.textContent = 'Prueba de Groq no disponible aquí. Intenta analizar una foto.';
+          if (resp.status === 401) { show('#ef4444', '❌ Clave inválida (401). Verifica que la copiaste completa y sin espacios.'); return; }
+          if (resp.status === 429) { show('#f59e0b', '⚠️ Clave válida pero cuota agotada (429). Espera ~1 minuto o crea otra clave en AI Studio.'); return; }
+          if (resp.status === 403) { show('#ef4444', '❌ Acceso denegado (403). La clave tiene restricciones — en AI Studio verifica que no tenga limitación de IP/referrer.'); return; }
+          if (!resp.ok) { show('#ef4444', `❌ Error ${resp.status}: ${data?.error?.message || 'desconocido'}`); return; }
+          show('#16a34a', `✅ ¡Clave válida y funciona! Ya puedes analizar fotos.`);
+        } catch(e) {
+          show('#ef4444', `❌ Error de red: ${e.message}`);
+        } finally {
+          testBtn.disabled = false;
         }
-      } catch(e) {
-        resultEl.style.color = '#ef4444';
-        resultEl.textContent = `❌ Error de red: ${e.message}`;
-      } finally {
-        testBtn.disabled = false;
-      }
+      })();
       break;
     }
     case 'saveAiSettings': {

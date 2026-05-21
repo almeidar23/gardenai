@@ -48,7 +48,7 @@ export function uploadFromGallery() {
     input.style.top = '-9999px';
     input.style.opacity = '0';
     document.body.appendChild(input);
-    
+
     input.onchange = async (e) => {
       const file = e.target.files[0];
       document.body.removeChild(input);
@@ -60,11 +60,46 @@ export function uploadFromGallery() {
         reject(err);
       }
     };
-    
+
     window.addEventListener('focus', () => {
       setTimeout(() => { if (input.parentNode) document.body.removeChild(input); }, 1000);
     }, { once: true });
-    
+
+    input.click();
+  });
+}
+
+/**
+ * Open gallery with multiple selection enabled.
+ * Returns an array of Blobs.
+ */
+export function uploadMultipleFromGallery() {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.style.position = 'absolute';
+    input.style.top = '-9999px';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+
+    input.onchange = async (e) => {
+      const files = [...e.target.files];
+      document.body.removeChild(input);
+      if (!files.length) return reject(new Error('No se seleccionaron fotos'));
+      try {
+        const blobs = await Promise.all(files.map(f => compressImage(f)));
+        resolve(blobs);
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    window.addEventListener('focus', () => {
+      setTimeout(() => { if (input.parentNode) document.body.removeChild(input); }, 1000);
+    }, { once: true });
+
     input.click();
   });
 }

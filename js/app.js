@@ -7,7 +7,7 @@ import {
   resetPassword, reloadUser, authErrorMessage,
   handlePendingRedirect
 } from './firebase-config.js';
-import { captureFromCamera, uploadFromGallery, blobToDataURL } from './camera.js';
+import { captureFromCamera, uploadFromGallery, uploadMultipleFromGallery, blobToDataURL } from './camera.js';
 import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
@@ -631,27 +631,27 @@ async function handleAction(action, target) {
     case 'capturePhoto': {
       const potId = target.dataset.potId;
       const photoType = target.dataset.photoType || 'plant';
-      try {
-        showToast('Abriendo cámara...');
-        const blob = await captureFromCamera();
-        closeModal();
-        await savePhoto(potId, blob, photoType);
-      } catch(e) {
-        closeModal();
-        if (e.message !== 'No se tomó ninguna foto') showToast('Error: ' + e.message);
-      }
+      closeModal();
+      await captureMultiplePhotos(potId, photoType);
       break;
     }
     case 'uploadPhoto': {
       const potId = target.dataset.potId;
       const photoType = target.dataset.photoType || 'plant';
+      closeModal();
       try {
-        const blob = await uploadFromGallery();
-        closeModal();
-        await savePhoto(potId, blob, photoType);
+        const blobs = await uploadMultipleFromGallery();
+        if (!blobs.length) break;
+        showToast(`⏳ Guardando ${blobs.length} foto${blobs.length > 1 ? 's' : ''}...`, 30000);
+        for (let i = 0; i < blobs.length; i++) {
+          if (blobs.length > 1) showToast(`⏳ Guardando foto ${i + 1} de ${blobs.length}...`, 10000);
+          await savePhotoQuiet(potId, blobs[i], photoType);
+        }
+        clearPhotoCache();
+        await navigate(`#pot/${potId}`);
+        showToast(`✅ ${blobs.length} foto${blobs.length > 1 ? 's' : ''} guardada${blobs.length > 1 ? 's' : ''}`);
       } catch(e) {
-        closeModal();
-        if (e.message !== 'No se seleccionó ninguna foto') showToast('Error: ' + e.message);
+        if (e.message !== 'No se seleccionaron fotos') showToast('Error: ' + e.message);
       }
       break;
     }
@@ -1175,6 +1175,54 @@ async function savePhoto(potId, blob, type = 'plant') {
     setTimeout(() => runAnalysis(photo.id, blob), 500);
   } else {
     showToast('Foto de planta guardada ✓');
+  }
+}
+
+// Save a photo without navigating (used when saving multiple)
+async function savePhotoQuiet(potId, blob, type = 'plant') {
+  return DB.addPhoto({ potId: Number(potId), type, blob, createdAt: new Date().toISOString() });
+}
+
+// Loop: capture → save → ask "¿Otra?"
+async function captureMultiplePhotos(potId, photoType) {
+  let count = 0;
+  while (true) {
+    try {
+      showToast('Abriendo cámara...');
+      const blob = await captureFromCamera();
+      await savePhotoQuiet(potId, blob, photoType);
+      count++;
+      clearPhotoCache();
+
+      // Show "take another?" overlay
+      const takeAnother = await new Promise(resolve => {
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed;bottom:calc(var(--nav-height,72px) + 8px);left:12px;right:12px;z-index:500;
+          background:var(--bg-card);border:1px solid var(--border-glass);border-radius:16px;
+          padding:16px;display:flex;flex-direction:column;gap:10px;
+          box-shadow:0 8px 24px rgba(0,0,0,0.3);backdrop-filter:blur(12px);`;
+        el.innerHTML = `
+          <div style="font-weight:600;font-size:0.95rem;color:var(--text-primary)">
+            📸 ${count} foto${count > 1 ? 's' : ''} guardada${count > 1 ? 's' : ''}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="_cam-more" class="btn btn-primary" style="flex:1">📸 Tomar otra</button>
+            <button id="_cam-done" class="btn btn-secondary" style="flex:1">✅ Listo</button>
+          </div>`;
+        document.body.appendChild(el);
+        el.querySelector('#_cam-more').onclick = () => { el.remove(); resolve(true); };
+        el.querySelector('#_cam-done').onclick = () => { el.remove(); resolve(false); };
+      });
+
+      if (!takeAnother) break;
+    } catch(e) {
+      if (e.message !== 'No se tomó ninguna foto') showToast('Error: ' + e.message);
+      break;
+    }
+  }
+  if (count > 0) {
+    await navigate(`#pot/${potId}`);
+    showToast(`✅ ${count} foto${count > 1 ? 's' : ''} guardada${count > 1 ? 's' : ''}`);
   }
 }
 

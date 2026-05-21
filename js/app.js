@@ -754,7 +754,7 @@ async function handleAction(action, target) {
       modalsEl().innerHTML = renderAnalysisActionsModal(photoId, switchType, switchLabel);
       break;
     }
-    case 'analyzePhoto': { await runAnalysis(Number(target.dataset.photoId)); break; }
+    case 'analyzePhoto': { closeModal(); await runAnalysis(Number(target.dataset.photoId)); break; }
     case 'switchPhotoType': {
       const pid = Number(target.dataset.photoId);
       const newType = target.dataset.newType;
@@ -978,11 +978,21 @@ async function handleAction(action, target) {
       const provider = document.getElementById('ai-provider').value;
       const geminiKey = document.getElementById('gemini-key-input')?.value?.trim();
       const groqKey = document.getElementById('groq-key-input')?.value?.trim();
-      
+
+      // Warn if keys look swapped
+      if (groqKey && groqKey.startsWith('AIzaSy')) {
+        showToast('⚠️ Esa parece una clave de Gemini (AIzaSy...). Pégala en el campo de Gemini, no en Groq.', 6000);
+        break;
+      }
+      if (geminiKey && geminiKey.startsWith('gsk_')) {
+        showToast('⚠️ Esa parece una clave de Groq (gsk_...). Pégala en el campo de Groq, no en Gemini.', 6000);
+        break;
+      }
+
       await DB.setSetting('aiProvider', provider);
       if (geminiKey) await DB.setSetting('geminiApiKey', geminiKey);
       if (groqKey) await DB.setSetting('groqApiKey', groqKey);
-      
+
       showToast('Configuración guardada ✓');
       break;
     }

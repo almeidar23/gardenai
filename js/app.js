@@ -668,6 +668,16 @@ async function handleAction(action, target) {
     }
     case 'clearPhotoSelection': { clearPhotoSelection(); break; }
     case 'clearPotSelection': { clearPotSelection(); break; }
+    case 'applyTaskToAll': {
+      // Select all pots automatically then open the task modal
+      const allIds = getAllHomePotIds();
+      selectedPots.clear();
+      allIds.forEach(id => selectedPots.add(id));
+      const products = await DB.getAllProducts();
+      products.sort((a,b) => a.name.localeCompare(b.name));
+      modalsEl().innerHTML = renderBulkPotTaskModal(products, selectedPots.size);
+      break;
+    }
     case 'bulkPotTask': {
       const products = await DB.getAllProducts();
       products.sort((a,b) => a.name.localeCompare(b.name));

@@ -156,10 +156,14 @@ async function callGroq(base64Image, prompt) {
 
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    const msg = err.error?.message || '';
-    if (resp.status === 401 || resp.status === 400) throw new Error('API Key de Groq inválida o no configurada. Revisa en Ajustes → IA.');
+    const msg = err.error?.message || err.message || '';
+    const msgLower = msg.toLowerCase();
+    // Catch all auth errors regardless of exact status code
+    const isAuthErr = resp.status === 401 || resp.status === 400 || resp.status === 403
+      || msgLower.includes('api key') || msgLower.includes('authentication') || msgLower.includes('invalid key');
+    if (isAuthErr) throw new Error('API Key de Groq inválida o no configurada. Revisa en Ajustes → IA.');
     if (resp.status === 429) throw new Error('Límite de Groq alcanzado. Espera un momento.');
-    if (msg.includes('model') || resp.status === 404) throw new Error(`Modelo Groq no disponible: ${modelName}`);
+    if (msgLower.includes('model') || resp.status === 404) throw new Error(`Modelo Groq no disponible: ${modelName}`);
     throw new Error(msg || `Groq error ${resp.status}`);
   }
 

@@ -1116,14 +1116,23 @@ async function savePhoto(potId, blob, type = 'plant') {
 
 async function runAnalysis(photoId, originalBlob = null) {
   const photo = await DB.getPhoto(photoId);
-  if (!photo) return;
+  if (!photo) { showToast('Error: foto no encontrada', 4000); return; }
   const blobForAI = originalBlob || photo.imageData || photo.blob;
+  if (!blobForAI) { showToast('Error: imagen no disponible', 4000); return; }
+
   const btn = document.getElementById('analyze-btn');
-  const setBtn = (html) => { if (btn) { btn.disabled = true; btn.innerHTML = html; } };
+  const hasBtn = !!btn;
   const spinner = '<div class="spinner" style="width:16px;height:16px;border:2px solid var(--border-glass);border-top-color:var(--bg-primary);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div>';
+  const setBtn = (html) => { if (btn) { btn.disabled = true; btn.innerHTML = html; } };
+
+  // Always show immediate toast feedback (critical for re-analyze where btn is hidden)
+  showToast('⏳ Analizando con IA...', 60000);
   setBtn(`${spinner} Analizando...`);
 
-  const onCountdown = (secs) => setBtn(`⏳ Límite alcanzado — reintentando en ${secs}s...`);
+  const onCountdown = (secs) => {
+    showToast(`⏳ Reintentando en ${secs}s...`, 1500);
+    setBtn(`⏳ Reintentando en ${secs}s...`);
+  };
 
   try {
     let result;
@@ -1154,7 +1163,7 @@ async function runAnalysis(photoId, originalBlob = null) {
         }
       }
     }
-    showToast('Análisis completado ✓');
+    showToast('✅ Análisis completado');
     if (window.location.hash.includes(`photo/${photoId}`)) {
       mainEl().innerHTML = await renderPhotoDetail(photoId);
       initPhotoZoom();
@@ -1162,9 +1171,10 @@ async function runAnalysis(photoId, originalBlob = null) {
       mainEl().innerHTML = await renderPot(photo.potId);
     }
   } catch (err) {
-    if (err.message==='API_KEY_MISSING') showToast('Configura tu API Key en Ajustes', 5000);
-    else { showToast('Error: '+err.message, 8000); console.error(err); }
-    if (btn) { btn.disabled=false; btn.innerHTML=`✨ Analizar ${photo.type==='analyzer'?'Medidor':'Planta'}`; }
+    console.error('[runAnalysis] error:', err);
+    if (err.message === 'API_KEY_MISSING') showToast('⚠️ Configura tu API Key en Ajustes → IA', 6000);
+    else showToast('❌ ' + err.message, 9000);
+    if (btn) { btn.disabled = false; btn.innerHTML = `✨ Analizar ${photo.type==='analyzer'?'Medidor':'Planta'}`; }
   }
 }
 

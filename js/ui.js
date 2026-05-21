@@ -330,18 +330,14 @@ export async function renderPhotoDetail(photoId) {
     analysisHtml = `<div class="analysis-card glass-card"><div class="analysis-header"><span class="ai-icon">🤖</span><h3>Análisis IA</h3><button class="analysis-menu-btn" data-action="openAnalysisMenu" data-photo-id="${photo.id}" data-switch-type="${switchType}" data-switch-label="${escapeHtml(switchLabel)}">✏️</button></div><button class="btn btn-primary btn-block" style="margin-top:4px" data-action="analyzePhoto" data-photo-id="${photo.id}" id="analyze-btn">✨ Analizar ${analyzeLabel}</button></div>`;
   }
   
-  const pot = await DB.getPot(photo.potId);
   const navHtml = `
     <div class="photo-gallery-nav glass-card">
-      <button class="nav-arrow nav-arrow-back" data-navigate="pot/${photo.potId}" title="Volver a ${escapeHtml(pot?.name||'Maceta')}">
-        <span class="nav-arrow-icon">←</span>
-        <span class="nav-arrow-label">${escapeHtml(pot?.emoji||'🪴')}</span>
-      </button>
+      ${prevPhoto ? `<button class="nav-arrow" data-navigate="pot/${photo.potId}/photo/${prevPhoto.id}">‹</button>` : '<div class="nav-spacer"></div>'}
       <div class="nav-date">
         <div class="date-main">${formatDate(photo.createdAt)}</div>
         <div class="date-sub">${formatTime(photo.createdAt)} • ${photo.type==='analyzer'?'📊 Analizador':'🌿 Planta'} ${potPhotos.length > 1 ? `• ${currentIndex+1}/${potPhotos.length}` : ''}</div>
       </div>
-      ${nextPhoto ? `<button class="nav-arrow" data-navigate="pot/${photo.potId}/photo/${nextPhoto.id}" title="Foto siguiente">›</button>` : '<div class="nav-spacer"></div>'}
+      ${nextPhoto ? `<button class="nav-arrow" data-navigate="pot/${photo.potId}/photo/${nextPhoto.id}">›</button>` : '<div class="nav-spacer"></div>'}
     </div>
   `;
 

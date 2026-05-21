@@ -1643,6 +1643,41 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   cursor: pointer;
 }
 
+/* ===== POT MODE MENU (dropdown from ✅ button) ===== */
+.pot-mode-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  min-width: 180px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.pot-mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s;
+}
+.pot-mode-option:hover, .pot-mode-option:active {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
 /* ===== REORDER MODE ===== */
 .drag-handle {
   display: none;

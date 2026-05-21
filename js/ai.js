@@ -67,7 +67,10 @@ async function callGemini(base64Image, prompt) {
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         if (resp.status === 401) throw new Error('API Key de Gemini inválida. Revisa en Ajustes.');
-        if (resp.status === 429) throw new Error('Límite de Gemini alcanzado. Espera un momento.');
+        if (resp.status === 429) {
+          const detail = err.error?.message || err.error?.status || '';
+          throw new Error(`Límite de Gemini alcanzado. Espera un momento. [${detail}]`);
+        }
         throw new Error(err.error?.message || `Gemini error ${resp.status}`);
       }
       const data = await resp.json();

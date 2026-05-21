@@ -823,8 +823,10 @@ export async function renderSettings() {
     </div>`;
   }
 
-  const aiSection = isAdmin ? `
+  // All users see at minimum a Groq key field; admin also sees provider + Gemini
+  const aiSection = `
     <div class="settings-section"><h3>🤖 Inteligencia Artificial</h3><div class="glass-card">
+      ${isAdmin ? `
       <div class="form-group"><label class="form-label" for="ai-provider">Proveedor</label>
         <select class="form-input" id="ai-provider" style="background:var(--bg-primary);border:1px solid var(--border-glass);color:var(--text-primary);padding:10px;border-radius:8px">
           <option value="gemini" ${provider==='gemini'?'selected':''}>Google Gemini (1.5 Flash)</option>
@@ -834,17 +836,17 @@ export async function renderSettings() {
       <div id="gemini-settings" style="display:${provider==='gemini'?'block':'none'};margin-top:16px;padding-top:16px;border-top:1px solid var(--border-glass)">
         <div class="form-group"><label class="form-label" for="gemini-key-input">API Key de Google Gemini</label><input class="form-input" type="password" id="gemini-key-input" placeholder="Ingresa tu API key" value="${escapeHtml(geminiKey)}">${gMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${gMask}</div>`:''}</div>
         <div style="font-size:0.7rem;color:var(--text-muted);margin-top:10px;line-height:1.5;margin-bottom:12px">Obtén tu API key en <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent)">Google AI Studio</a>.</div>
-      </div>
-      <div id="groq-settings" style="display:${provider==='groq'?'block':'none'};margin-top:16px;padding-top:16px;border-top:1px solid var(--border-glass)">
-        <div class="form-group"><label class="form-label" for="groq-key-input">API Key de Groq</label><input class="form-input" type="password" id="groq-key-input" placeholder="Ingresa tu API key" value="${escapeHtml(groqKey)}">${rqMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${rqMask}</div>`:''}</div>
-        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:10px;line-height:1.5;margin-bottom:12px">Obtén tu API key gratuita en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">Groq Cloud</a>. No requiere tarjeta.</div>
+      </div>` : ''}
+      <div id="groq-settings" style="${isAdmin?`display:${provider==='groq'?'block':'none'};`:''}margin-top:${isAdmin?'16':'0'}px;${isAdmin?'padding-top:16px;border-top:1px solid var(--border-glass)':''}">
+        <div class="form-group"><label class="form-label" for="groq-key-input">API Key de Groq${!isAdmin?' (tu clave personal)':''}</label><input class="form-input" type="password" id="groq-key-input" placeholder="gsk_..." value="${escapeHtml(groqKey)}">${rqMask?`<div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px">Actual: ${rqMask}</div>`:''}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;line-height:1.5;margin-bottom:12px">Gratis en <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent)">console.groq.com/keys</a>. No requiere tarjeta.</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-primary" style="flex:1" data-action="saveAiSettings" id="save-ai-btn">💾 Guardar</button>
         <button class="btn btn-secondary" style="flex:1" data-action="testAiKey" id="test-ai-btn">🔍 Probar clave</button>
       </div>
       <div id="ai-test-result" style="margin-top:10px;font-size:0.75rem;display:none"></div>
-    </div></div>` : '';
+    </div></div>`;
 
   const currentTheme = currentThemeRaw || 'dark';
 

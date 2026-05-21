@@ -975,7 +975,7 @@ async function handleAction(action, target) {
       break;
     }
     case 'saveAiSettings': {
-      const provider = document.getElementById('ai-provider').value;
+      const providerEl = document.getElementById('ai-provider');
       const geminiKey = document.getElementById('gemini-key-input')?.value?.trim();
       const groqKey = document.getElementById('groq-key-input')?.value?.trim();
 
@@ -989,11 +989,12 @@ async function handleAction(action, target) {
         break;
       }
 
-      await DB.setSetting('aiProvider', provider);
+      if (providerEl) await DB.setSetting('aiProvider', providerEl.value);
       if (geminiKey) await DB.setSetting('geminiApiKey', geminiKey);
       if (groqKey) await DB.setSetting('groqApiKey', groqKey);
 
-      showToast('Configuración guardada ✓');
+      if (!groqKey && !geminiKey) { showToast('Escribe una clave antes de guardar'); break; }
+      showToast('✅ Configuración guardada');
       break;
     }
     case 'saveGlobalConfig': {
@@ -1009,9 +1010,18 @@ async function handleAction(action, target) {
       if (gGroqKey)   update.groqApiKey   = gGroqKey;
       if (gGeminiKey) update.geminiApiKey = gGeminiKey;
       if (!Object.keys(update).length) { showToast('Escribe al menos una clave para guardar'); break; }
-      await DB.setGlobalConfig(update);
-      showToast('Claves globales guardadas ✓');
-      mainEl().innerHTML = await renderSettings();
+      try {
+        await DB.setGlobalConfig(update);
+        showToast('✅ Claves globales guardadas');
+        mainEl().innerHTML = await renderSettings();
+      } catch(e) {
+        console.error('saveGlobalConfig error:', e);
+        if (e.code === 'permission-denied' || e.message?.includes('permission')) {
+          showToast('❌ Sin permiso para escribir. Ve a Firebase Console → Firestore → global/config y añade la clave manualmente.', 10000);
+        } else {
+          showToast('❌ Error al guardar: ' + e.message, 8000);
+        }
+      }
       break;
     }
     case 'adminDeleteUser': {

@@ -141,8 +141,12 @@ async function navigate(hash) {
     const parts = hash.split('/');
     if (parts.length > 2 && parts[2] === 'photo') {
       newRoute = 'photo';
-      headerHtml = `<button class="header-back header-back-photo" data-navigate="pot/${parts[1]}">←</button> Foto`;
-      html = await renderPhotoDetail(parts[3]);
+      const [photoPot, photoHtml] = await Promise.all([
+        DB.getPot(Number(parts[1])),
+        renderPhotoDetail(parts[3])
+      ]);
+      headerHtml = `<button class="header-back header-back-photo" data-navigate="pot/${parts[1]}">←</button> ${escapeHtml(photoPot?.emoji||'🪴')} ${escapeHtml(photoPot?.name||'Foto')}`;
+      html = photoHtml;
     } else {
       newRoute = 'pot';
       const [pot, potHtml] = await Promise.all([

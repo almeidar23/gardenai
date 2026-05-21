@@ -17,7 +17,7 @@ import {
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderBulkPotNoteModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
-  renderAnalysisActionsModal
+  renderAnalysisActionsModal, renderPotModeModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -239,16 +239,14 @@ async function handleAction(action, target) {
       break;
     }
     case 'togglePotModeMenu': {
-      const menu = document.getElementById('pot-mode-menu');
-      if (!menu) break;
-      // If a mode is already active, cancel it instead of showing the menu
+      // If a mode is already active, cancel/save it instead of showing the menu
       if (potSelectMode) { clearPotSelection(); showToast('Selección cancelada'); break; }
       if (reorderMode) { await saveReorderMode(); break; }
-      menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+      modalsEl().innerHTML = renderPotModeModal();
       break;
     }
     case 'enterPotSelectMode': {
-      document.getElementById('pot-mode-menu').style.display = 'none';
+      closeModal();
       if (!potSelectMode) {
         potSelectMode = true;
         document.getElementById('pots-grid')?.classList.add('select-mode');
@@ -262,7 +260,7 @@ async function handleAction(action, target) {
       break;
     }
     case 'enterReorderMode': {
-      document.getElementById('pot-mode-menu').style.display = 'none';
+      closeModal();
       if (!reorderMode) {
         startReorderMode();
       } else {
@@ -1904,11 +1902,6 @@ function setupRegisterForm() {
 
 // ===== GLOBAL EVENT DELEGATION =====
 document.addEventListener('click', (e) => {
-  // Close pot mode menu when clicking outside it
-  const menu = document.getElementById('pot-mode-menu');
-  if (menu && menu.style.display !== 'none' && !e.target.closest('#pot-mode-menu') && !e.target.closest('#pot-select-mode-btn')) {
-    menu.style.display = 'none';
-  }
 
   const ts = e.target.closest('[data-toggle-select="task"]');
   if (ts && taskSelectMode && !e.target.closest('[data-action]')) {

@@ -1881,14 +1881,14 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   flex-direction: column;
   gap: 0;
   position: relative;
-  padding-left: 54px; /* space for date column */
+  padding-left: 80px; /* space for date column */
 }
 
 /* vertical line */
 .stats-timeline::before {
   content: '';
   position: absolute;
-  left: 76px;
+  left: 106px;
   top: 16px;
   bottom: 16px;
   width: 2px;
@@ -1906,29 +1906,29 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 /* date column */
 .stats-day-date {
   position: absolute;
-  left: -54px;
-  width: 46px;
+  left: -80px;
+  width: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding-top: 10px;
-  gap: 1px;
+  gap: 2px;
 }
 .stats-day-weekday {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
 }
 .stats-day-num {
-  font-size: 1.5rem;
+  font-size: 2.6rem;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1;
 }
 .stats-day-month {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1937,41 +1937,41 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* dot on timeline */
 .stats-day-dot {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg-primary, #0a0f0d);
   flex-shrink: 0;
-  margin-top: 16px;
-  margin-left: 18px;
-  margin-right: 14px;
-  box-shadow: 0 0 8px rgba(45,212,168,0.5);
+  margin-top: 20px;
+  margin-left: 20px;
+  margin-right: 16px;
+  box-shadow: 0 0 10px rgba(45,212,168,0.6);
 }
 
 /* card body */
 .stats-day-body {
   flex: 1;
-  padding: 12px 14px 10px;
+  padding: 14px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* chips row */
 .stats-day-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 .stats-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  padding: 4px 10px;
-  border-radius: 20px;
+  gap: 6px;
+  font-size: 1rem;
+  padding: 7px 14px;
+  border-radius: 24px;
   background: color-mix(in srgb, var(--chip-color) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--chip-color) 40%, transparent);
   color: var(--text-primary);
@@ -1980,17 +1980,18 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 .stats-chip strong {
   color: var(--chip-color);
   font-weight: 700;
+  font-size: 1.05rem;
 }
 
 /* pot avatars */
 .stats-day-avatars {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .stats-pot-avatar {
-  width: 32px;
-  height: 32px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--border-glass);
@@ -2001,7 +2002,7 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1.8rem;
 }
 
 /* detail button */

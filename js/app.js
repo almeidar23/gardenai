@@ -12,7 +12,7 @@ import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt, r
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal, renderNotesModal, renderEditNoteModal, renderEditAnalysisModal, renderEditDayModal,
-  renderEditPhotoModal, renderPotScheduleModal, renderLogin, renderStats,
+  renderEditPhotoModal, renderPotScheduleModal, renderLogin, renderStats, renderStatsDayDetail,
   renderBulkDateModal, renderBulkNotesModal,
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderBulkPotNoteModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
@@ -157,6 +157,13 @@ async function navigate(hash) {
       headerHtml = `<button class="header-back" data-navigate="home">←</button> ${escapeHtml(pot?.emoji||'🪴')} ${escapeHtml(pot?.name||'Maceta')}`;
       html = potHtml;
     }
+  } else if (hash.startsWith('#stats-day/')) {
+    const dk = hash.split('/')[1];
+    newRoute = 'stats-day';
+    const d = new Date(dk + 'T12:00:00');
+    const label = d.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^\w/, c => c.toUpperCase());
+    headerHtml = `<button class="header-back" data-navigate="stats">←</button> ${label}`;
+    html = await renderStatsDayDetail(dk);
   } else if (hash === '#stats') {
     newRoute = 'stats';
     headerHtml = '📊 Estadísticas';
@@ -200,7 +207,7 @@ function updateNav() {
       (t==='tasks' && currentRoute==='tasks') ||
       (t==='products' && (currentRoute==='products'||currentRoute==='product')) ||
       (t==='settings' && currentRoute==='settings') ||
-      (t==='stats' && currentRoute==='stats')
+      (t==='stats' && (currentRoute==='stats'||currentRoute==='stats-day'))
     );
   });
 }

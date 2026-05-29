@@ -1138,16 +1138,12 @@ export function renderProductDateModal(potId, productSlug, lastDate) {
 }
 
 // ===== STATS VIEW =====
-export async function renderStats() {
+// ---- shared stats data builder ----
+async function buildStatsData() {
   const pots = await DB.getAllPots();
-  if (pots.length === 0) {
-    return `<div class="empty-state"><div class="empty-icon">📊</div><p>Agrega macetas para ver las estadísticas de tu jardín.</p></div>`;
-  }
-
   const potMap = {};
   pots.forEach(pot => { potMap[pot.id] = pot; });
 
-  // Fetch all data in parallel
   const [photosArr, notesArr, analysesArr, taskLogs, products] = await Promise.all([
     Promise.all(pots.map(p => DB.getPhotosByPot(p.id))),
     Promise.all(pots.map(p => DB.getNotesByPot(p.id))),
@@ -1159,164 +1155,192 @@ export async function renderStats() {
   const productMap = {};
   products.forEach(pr => { productMap[pr.slug] = pr; });
 
-  // Fetch analyses keyed by photoId
-  let allPhotos = [];
-  photosArr.forEach((photos, i) => {
-    photos.forEach(photo => allPhotos.push({ ...photo, potId: pots[i].id }));
-  });
-  const photoAnalyses = await Promise.all(allPhotos.map(p => DB.getAnalysisByPhoto(p.id)));
-  const photoAnalysisMap = {};
-  allPhotos.forEach((p, i) => { photoAnalysisMap[p.id] = photoAnalyses[i]; });
-
-  // ---- helpers ----
-  function potLabel(pot) { return `${pot.emoji || '🪴'} ${escapeHtml(pot.name)}`; }
-
-  function potListText(potArr, max = 3) {
-    if (!potArr.length) return '';
-    if (potArr.length === 1) return potLabel(potArr[0]);
-    if (potArr.length <= max) return potArr.map(potLabel).join(', ');
-    return potArr.slice(0, 2).map(potLabel).join(', ') + ` y ${potArr.length - 2} más`;
-  }
-
-  function taskVerb(slug, productName) {
-    const s = (slug + ' ' + productName).toLowerCase();
-    if (/riego|agua|water|reg/.test(s)) return '💧 Se regó';
-    if (/tierra|remuev|afloj|soil/.test(s)) return '🌱 Se removió la tierra';
-    if (/fertiliz|abono|nutri|fertil/.test(s)) return '🌿 Se fertilizó';
-    if (/poda|prune|recort/.test(s)) return '✂️ Se podó';
-    if (/pesticid|plaga|insect|fungic/.test(s)) return '🐛 Se trató';
-    return '✅ Se aplicó';
-  }
-
-  // ---- collect all items into a flat list with date ----
   const allItems = [];
+  photosArr.forEach((photos, i) => photos.forEach(p => allItems.push({ type: 'photo',   date: p.createdAt,  potId: pots[i].id, data: p })));
+  notesArr.forEach((notes, i)   => notes.forEach(n  => allItems.push({ type: 'note',    date: n.createdAt,  potId: pots[i].id, data: n })));
+  analysesArr.forEach((anals,i) => anals.forEach(a  => allItems.push({ type: 'analysis',date: a.createdAt,  potId: pots[i].id, data: a })));
+  taskLogs.forEach(tl => allItems.push({ type: 'tasklog', date: tl.appliedAt, potId: tl.potId, data: tl }));
 
-  photosArr.forEach((photos, i) => {
-    photos.forEach(p => allItems.push({ type: 'photo', date: p.createdAt, potId: pots[i].id, data: p }));
-  });
-  notesArr.forEach((notes, i) => {
-    notes.forEach(n => allItems.push({ type: 'note', date: n.createdAt, potId: pots[i].id, data: n }));
-  });
-  analysesArr.forEach((analyses, i) => {
-    analyses.forEach(a => allItems.push({ type: 'analysis', date: a.createdAt, potId: pots[i].id, data: a }));
-  });
-  taskLogs.forEach(tl => {
-    allItems.push({ type: 'tasklog', date: tl.appliedAt, potId: tl.potId, data: tl });
-  });
-
-  // Group by calendar date
   const groups = {};
   for (const item of allItems) {
     const k = dateKey(item.date);
     if (!groups[k]) groups[k] = [];
     groups[k].push(item);
   }
+  return { pots, potMap, productMap, groups };
+}
+
+function taskIcon(slug, productName) {
+  const s = (slug + ' ' + productName).toLowerCase();
+  if (/riego|agua|water|reg/.test(s))        return { icon: '💧', label: 'Riego',       color: '#3b82f6' };
+  if (/tierra|remuev|afloj|soil/.test(s))    return { icon: '🌱', label: 'Tierra',      color: '#a16207' };
+  if (/fertiliz|abono|nutri|fertil/.test(s)) return { icon: '🌿', label: 'Fertilizante',color: '#16a34a' };
+  if (/poda|prune|recort/.test(s))           return { icon: '✂️', label: 'Poda',         color: '#9333ea' };
+  if (/pesticid|plaga|insect|fungic/.test(s))return { icon: '🐛', label: 'Tratamiento', color: '#dc2626' };
+  return { icon: '✅', label: 'Tarea', color: '#64748b' };
+}
+
+export async function renderStats() {
+  const { pots, potMap, productMap, groups } = await buildStatsData();
+  if (!pots.length) return `<div class="empty-state"><div class="empty-icon">📊</div><p>Agrega macetas para ver las estadísticas de tu jardín.</p></div>`;
+
+  // Preload thumbnails for pots
+  const allPotsPhotos = await Promise.all(pots.map(p => DB.getPhotosByPot(p.id)));
+  const potThumb = {};
+  await Promise.all(pots.map(async (pot, i) => {
+    const photos = allPotsPhotos[i];
+    if (!photos.length) return;
+    const main = pot.mainPhotoId ? (photos.find(p => p.id === pot.mainPhotoId) || photos[0]) : photos[0];
+    if (main.blob || main.storageUrl || main.imageData) {
+      potThumb[pot.id] = await getPhotoURL(main);
+    }
+  }));
 
   const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
   let content = '';
 
   for (const dk of sortedDates) {
     const dayItems = groups[dk];
-    const bullets = [];
 
-    // ---- 1. Task logs grouped by product ----
-    const tasksByProduct = {};
-    for (const item of dayItems.filter(i => i.type === 'tasklog')) {
-      const slug = item.data.productSlug;
-      if (!tasksByProduct[slug]) tasksByProduct[slug] = [];
-      tasksByProduct[slug].push(item.potId);
-    }
-    for (const [slug, potIds] of Object.entries(tasksByProduct)) {
-      const product = productMap[slug];
-      const productName = product?.name || slug;
-      const verb = taskVerb(slug, productName);
-      const uniquePotIds = [...new Set(potIds)];
-      const potObjs = uniquePotIds.map(id => potMap[id]).filter(Boolean);
-      const inText = potObjs.length === pots.length ? 'en todas las macetas' : `en ${potListText(potObjs)}`;
-      bullets.push(`<li>${verb} <strong>${escapeHtml(productName)}</strong> ${inText}</li>`);
-    }
+    // --- compute summary counts ---
+    let photoCount = 0, noteCount = 0, healthyCount = 0, warningCount = 0, dangerCount = 0;
+    const taskChips = {};   // icon → {icon, label, color, count}
+    const activePotIds = new Set();
 
-    // ---- 2. Photos (grouped by pot) ----
-    const photosByPot = {};
-    for (const item of dayItems.filter(i => i.type === 'photo')) {
-      if (!photosByPot[item.potId]) photosByPot[item.potId] = [];
-      photosByPot[item.potId].push(item.data);
-    }
-    const photoPotsAll = Object.keys(photosByPot);
-    if (photoPotsAll.length) {
-      const totalPhotos = Object.values(photosByPot).reduce((s, arr) => s + arr.length, 0);
-      const potObjs = photoPotsAll.map(id => potMap[id]).filter(Boolean);
-      const inText = potObjs.length === pots.length ? 'en todas las macetas' : `en ${potListText(potObjs)}`;
-      const fLabel = totalPhotos === 1 ? '1 foto' : `${totalPhotos} fotos`;
-      bullets.push(`<li>📷 Se tomó${totalPhotos > 1 ? 'n' : ''} ${fLabel} ${inText}</li>`);
+    for (const item of dayItems) {
+      activePotIds.add(item.potId);
+      if (item.type === 'photo') photoCount++;
+      if (item.type === 'note')  noteCount++;
+      if (item.type === 'analysis' && item.data.type === 'plant') {
+        const hs = item.data.result?.healthStatus;
+        if (hs === 'healthy') healthyCount++;
+        else if (hs === 'warning') warningCount++;
+        else if (hs === 'danger')  dangerCount++;
+      }
+      if (item.type === 'tasklog') {
+        const slug = item.data.productSlug;
+        const t = taskIcon(slug, productMap[slug]?.name || slug);
+        if (!taskChips[t.icon]) taskChips[t.icon] = { ...t, count: 0 };
+        taskChips[t.icon].count++;
+      }
     }
 
-    // ---- 3. AI analyses ----
-    const analysisByPot = {};
-    for (const item of dayItems.filter(i => i.type === 'analysis')) {
-      analysisByPot[item.potId] = item.data;
+    // --- chip html ---
+    let chipsHtml = '';
+    if (healthyCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#16a34a">🟢 <strong>${healthyCount}</strong></span>`;
+    if (warningCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#ca8a04">🟡 <strong>${warningCount}</strong></span>`;
+    if (dangerCount)  chipsHtml += `<span class="stats-chip" style="--chip-color:#dc2626">🔴 <strong>${dangerCount}</strong></span>`;
+    for (const t of Object.values(taskChips)) {
+      chipsHtml += `<span class="stats-chip" style="--chip-color:${t.color}">${t.icon} <strong>${t.count}</strong></span>`;
     }
-    // Group by health status
-    const healthy = [], warning = [], danger = [], recs = [];
-    for (const [potId, analysis] of Object.entries(analysisByPot)) {
-      const pot = potMap[potId];
+    if (photoCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#6366f1">📷 <strong>${photoCount}</strong></span>`;
+    if (noteCount)  chipsHtml += `<span class="stats-chip" style="--chip-color:#0891b2">📝 <strong>${noteCount}</strong></span>`;
+
+    // --- active pot avatars ---
+    let avatarsHtml = '';
+    for (const pid of activePotIds) {
+      const pot = potMap[pid];
       if (!pot) continue;
-      const r = analysis.result || {};
-      const hs = r.healthStatus;
-      if (hs === 'healthy') healthy.push(pot);
-      else if (hs === 'warning') warning.push(pot);
-      else if (hs === 'danger') danger.push(pot);
-      if (r.recommendations && r.recommendations.length) {
-        r.recommendations.forEach(rec => recs.push({ pot, rec }));
-      }
-    }
-    if (healthy.length) bullets.push(`<li>🟢 IA analizó ${potListText(healthy)}: todo bien</li>`);
-    if (warning.length) bullets.push(`<li>🟡 IA detectó alertas en ${potListText(warning)}</li>`);
-    if (danger.length) bullets.push(`<li>🔴 IA detectó problemas en ${potListText(danger)}</li>`);
-    // Group identical recommendations
-    const recsByText = {};
-    for (const { pot, rec } of recs) {
-      if (!recsByText[rec]) recsByText[rec] = [];
-      recsByText[rec].push(pot);
-    }
-    for (const [rec, recPots] of Object.entries(recsByText)) {
-      bullets.push(`<li>🤖 IA recomendó: <em>${escapeHtml(rec)}</em> en ${potListText(recPots)}</li>`);
+      const thumb = potThumb[pid];
+      avatarsHtml += thumb
+        ? `<img class="stats-pot-avatar" src="${thumb}" alt="${escapeHtml(pot.name)}" title="${escapeHtml(pot.name)}">`
+        : `<div class="stats-pot-avatar stats-pot-avatar-emoji" title="${escapeHtml(pot.name)}">${pot.emoji || '🪴'}</div>`;
     }
 
-    // ---- 4. Notes (with links to pot) ----
-    const notesItems = dayItems.filter(i => i.type === 'note');
-    if (notesItems.length) {
-      // Group by pot
-      const notesByPot = {};
-      for (const item of notesItems) {
-        if (!notesByPot[item.potId]) notesByPot[item.potId] = [];
-        notesByPot[item.potId].push(item.data);
-      }
-      for (const [potId, notes] of Object.entries(notesByPot)) {
-        const pot = potMap[potId];
-        if (!pot) continue;
-        const potLink = `<a class="stats-pot-link" data-navigate="pot/${potId}">${potLabel(pot)}</a>`;
-        if (notes.length === 1) {
-          const preview = escapeHtml(notes[0].text.substring(0, 60)) + (notes[0].text.length > 60 ? '…' : '');
-          bullets.push(`<li>📝 Nota en ${potLink}: <span class="stats-note-preview">${preview}</span></li>`);
-        } else {
-          bullets.push(`<li>📝 ${notes.length} notas en ${potLink}</li>`);
-        }
-      }
-    }
+    // --- date label ---
+    const d = new Date(dk + 'T12:00:00');
+    const weekday = d.toLocaleDateString('es', { weekday: 'short' }).replace('.','');
+    const dayNum  = d.getDate();
+    const month   = d.toLocaleDateString('es', { month: 'short' }).replace('.','');
 
-    if (!bullets.length) continue;
-
-    // Format date header nicely (capitalize weekday)
-    const dateLabel = formatDate(dayItems[0].date).replace(/^\w/, c => c.toUpperCase());
-
-    content += `<div class="glass-card mb-16 stats-day-card">
-      <div class="stats-day-header">${dateLabel}</div>
-      <ul class="stats-day-bullets">${bullets.join('')}</ul>
+    content += `
+    <div class="stats-day-row">
+      <div class="stats-day-date">
+        <span class="stats-day-weekday">${weekday}</span>
+        <span class="stats-day-num">${dayNum}</span>
+        <span class="stats-day-month">${month}</span>
+      </div>
+      <div class="stats-day-dot"></div>
+      <div class="stats-day-body glass-card">
+        <div class="stats-day-chips">${chipsHtml || '<span style="font-size:0.75rem;color:var(--text-muted)">Sin actividad</span>'}</div>
+        ${avatarsHtml ? `<div class="stats-day-avatars">${avatarsHtml}</div>` : ''}
+        <button class="stats-day-detail-btn" data-navigate="stats-day/${dk}">Ver →</button>
+      </div>
     </div>`;
   }
 
-  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">📊 Resumen del jardín</div></div>${content || '<div class="empty-state"><p>No hay actividad aún. ¡Comienza a documentar tu jardín!</p></div>'}`;
+  const timelineHtml = content
+    ? `<div class="stats-timeline">${content}</div>`
+    : `<div class="empty-state"><p>No hay actividad aún. ¡Comenzá a documentar tu jardín!</p></div>`;
+
+  return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">${sortedDates.length} día${sortedDates.length !== 1 ? 's' : ''} con actividad</div></div>${timelineHtml}`;
+}
+
+export async function renderStatsDayDetail(dateKey) {
+  const { pots, potMap, productMap, groups } = await buildStatsData();
+  const dayItems = groups[dateKey] || [];
+  if (!dayItems.length) return `<div class="empty-state"><p>Sin actividad este día.</p></div>`;
+
+  // Group items by pot
+  const byPot = {};
+  for (const item of dayItems) {
+    if (!byPot[item.potId]) byPot[item.potId] = [];
+    byPot[item.potId].push(item);
+  }
+
+  // Pot thumbnails
+  const allPhotos = await Promise.all(pots.map(p => DB.getPhotosByPot(p.id)));
+  const potThumb = {};
+  await Promise.all(pots.map(async (pot, i) => {
+    const photos = allPhotos[i];
+    if (!photos.length) return;
+    const main = pot.mainPhotoId ? (photos.find(p => p.id === pot.mainPhotoId) || photos[0]) : photos[0];
+    if (main.blob || main.storageUrl || main.imageData) potThumb[pot.id] = await getPhotoURL(main);
+  }));
+
+  let content = '';
+  for (const [potId, items] of Object.entries(byPot)) {
+    const pot = potMap[potId];
+    if (!pot) continue;
+    const thumb = potThumb[potId];
+    const avatarHtml = thumb
+      ? `<img class="stats-detail-pot-thumb" src="${thumb}" alt="">`
+      : `<div class="stats-detail-pot-thumb stats-detail-pot-emoji">${pot.emoji || '🪴'}</div>`;
+
+    let rows = '';
+    for (const item of items) {
+      if (item.type === 'photo') {
+        const url = item.data.blob || item.data.storageUrl || item.data.imageData ? await getPhotoURL(item.data) : null;
+        if (url) rows += `<img class="stats-detail-photo" src="${url}" alt="foto">`;
+      }
+      if (item.type === 'analysis' && item.data.type === 'plant' && item.data.result) {
+        const r = item.data.result;
+        const hs = r.healthStatus;
+        const badge = hs === 'healthy' ? '🟢 Sana' : hs === 'warning' ? '🟡 Atención' : '🔴 Problema';
+        const score = r.healthScore ? ` · ${r.healthScore}/10` : '';
+        rows += `<div class="stats-detail-analysis"><span class="stats-detail-badge">${badge}${score}</span>${r.summary ? `<p class="stats-detail-summary">${escapeHtml(r.summary)}</p>` : ''}</div>`;
+      }
+      if (item.type === 'tasklog') {
+        const t = taskIcon(item.data.productSlug, productMap[item.data.productSlug]?.name || item.data.productSlug);
+        const prodName = productMap[item.data.productSlug]?.name || item.data.productSlug;
+        rows += `<div class="stats-detail-task"><span>${t.icon}</span><span>${escapeHtml(prodName)}</span></div>`;
+      }
+      if (item.type === 'note') {
+        rows += `<div class="stats-detail-note">📝 <span>${escapeHtml(item.data.text)}</span></div>`;
+      }
+    }
+
+    content += `<div class="glass-card stats-detail-pot-card">
+      <div class="stats-detail-pot-header">
+        ${avatarHtml}
+        <span class="stats-detail-pot-name">${escapeHtml(pot.name)}</span>
+        <button class="btn btn-sm btn-secondary" data-navigate="pot/${pot.id}" style="margin-left:auto;font-size:0.75rem;padding:4px 10px">Ver maceta →</button>
+      </div>
+      <div class="stats-detail-rows">${rows}</div>
+    </div>`;
+  }
+
+  return content || `<div class="empty-state"><p>Sin actividad este día.</p></div>`;
 }
 
 // ===== AGREGAR PLANTA =====

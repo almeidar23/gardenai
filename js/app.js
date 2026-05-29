@@ -8,7 +8,7 @@ import {
   handlePendingRedirect
 } from './firebase-config.js';
 import { captureFromCamera, uploadFromGallery, uploadMultipleFromGallery, blobToDataURL } from './camera.js';
-import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt } from './ai.js';
+import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt, recommendPotForPlant } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal, renderNotesModal, renderEditNoteModal, renderEditAnalysisModal, renderEditDayModal,
@@ -17,7 +17,8 @@ import {
   renderProductModal, renderBulkPotTaskModal, renderBulkApplyProductModal, renderBulkPotNoteModal, renderProductMenu, renderProductDateModal,
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
-  renderAnalysisActionsModal, renderPotModeModal, renderApplyTaskModal
+  renderAnalysisActionsModal, renderPotModeModal, renderApplyTaskModal,
+  renderAddPlantSourceModal, renderPlantLoadingModal, renderPlantRecommendationsModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -37,6 +38,8 @@ let taskFilter = 'all';
 let reorderMode = false;
 let reorderPotIds = [];
 let _drag = null;
+let pendingPlantBlob = null;
+let pendingPlantProfile = null;
 
 function togglePhotoSelection(photoId) {
   const id = String(photoId);
@@ -200,6 +203,49 @@ function updateNav() {
       (t==='stats' && currentRoute==='stats')
     );
   });
+}
+
+async function runAddPlantFlow(blob) {
+  try {
+    modalsEl().innerHTML = renderPlantLoadingModal('Identificando planta...');
+    const profile = await analyzePlant(blob);
+
+    modalsEl().innerHTML = renderPlantLoadingModal('Buscando la mejor maceta...');
+    const pots = await DB.getAllPots();
+    if (!pots.length) {
+      closeModal();
+      showToast('Primero agrega una maceta en Home');
+      return;
+    }
+
+    const analysesPerPot = await Promise.all(pots.map(p => DB.getAnalysesByPot(p.id)));
+    const potsData = pots.map((pot, i) => {
+      const analyses = analysesPerPot[i]
+        .filter(a => a.type === 'plant' && a.result)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const latest = analyses[0]?.result;
+      const plantTypes = (pot.plantTypes || (pot.plantType ? [pot.plantType] : []));
+      return {
+        id: pot.id,
+        name: pot.name,
+        emoji: pot.emoji || '🪴',
+        plantTypes,
+        lastSun:   latest?.sunRequirements  || null,
+        lastWater: latest?.waterRequirements || null,
+      };
+    });
+
+    const { recommendations, tip } = await recommendPotForPlant(blob, profile, potsData);
+
+    pendingPlantBlob    = blob;
+    pendingPlantProfile = profile;
+    if (tip) profile._tip = tip;
+
+    modalsEl().innerHTML = renderPlantRecommendationsModal(profile, recommendations || [], pots);
+  } catch (e) {
+    closeModal();
+    showToast('Error: ' + e.message);
+  }
 }
 
 // ===== ACTIONS =====
@@ -421,6 +467,47 @@ async function handleAction(action, target) {
         await DB.deletePot(Number(target.dataset.potId)); closeModal(); clearPhotoCache();
         window.location.hash = '#home'; showToast('Maceta eliminada');
       } break;
+    }
+    case 'addPlant': {
+      modalsEl().innerHTML = renderAddPlantSourceModal();
+      break;
+    }
+    case 'captureNewPlant':
+    case 'uploadNewPlant': {
+      try {
+        closeModal();
+        const blob = action === 'captureNewPlant'
+          ? await captureFromCamera()
+          : await uploadFromGallery();
+        await runAddPlantFlow(blob);
+      } catch (e) {
+        if (e.message !== 'No se tomó ninguna foto' && e.message !== 'No se seleccionó ninguna foto') {
+          showToast('Error: ' + e.message);
+        }
+      }
+      break;
+    }
+    case 'plantInPot': {
+      const potId = Number(target.dataset.potId);
+      const blob  = pendingPlantBlob;
+      const profile = pendingPlantProfile;
+      pendingPlantBlob    = null;
+      pendingPlantProfile = null;
+      closeModal();
+      if (!blob) { showToast('Error: no hay foto pendiente'); break; }
+      showToast('Guardando planta...');
+      try {
+        const photo = await DB.addPhoto({ potId, type: 'plant', blob, createdAt: new Date().toISOString() });
+        clearPhotoCache();
+        if (profile) {
+          await DB.addAnalysis({ photoId: photo.id, potId, type: 'plant', result: profile, createdAt: new Date().toISOString() });
+        }
+        await navigate(`#pot/${potId}`);
+        showToast('🌱 Planta agregada ✅');
+      } catch (e) {
+        showToast('Error al guardar: ' + e.message);
+      }
+      break;
     }
     case 'addPhoto': { modalsEl().innerHTML = renderPhotoModal(target.dataset.potId); break; }
     case 'selectPhotoType': {

@@ -98,6 +98,7 @@ export async function renderHome() {
     </div>`;
   }
   potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
+  potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPlant" id="add-plant-btn"><div class="pot-icon">🌱</div><div class="pot-name">Nueva Planta</div></div>`;
   return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="togglePotModeMenu" id="pot-select-mode-btn" title="Opciones"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
@@ -1307,6 +1308,53 @@ export async function renderStats() {
   }
 
   return `<div class="flex items-center justify-between mb-6"><div class="section-subtitle">📊 Resumen del jardín</div></div>${content || '<div class="empty-state"><p>No hay actividad aún. ¡Comienza a documentar tu jardín!</p></div>'}`;
+}
+
+// ===== AGREGAR PLANTA =====
+
+export function renderAddPlantSourceModal() {
+  return `<div class="modal-overlay" data-action="closeModal" id="add-plant-modal"><div class="modal-content"><div class="modal-handle"></div><div class="modal-title">🌱 Nueva Planta</div><div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;text-align:center">Tomá una foto para que la IA identifique la planta y recomiende la mejor maceta</div><div class="flex flex-col gap-8" style="margin-top:4px"><button class="btn btn-secondary btn-block" data-action="captureNewPlant">📸 Tomar Foto</button><button class="btn btn-secondary btn-block" data-action="uploadNewPlant">🖼️ Subir desde el dispositivo</button></div></div></div>`;
+}
+
+export function renderPlantLoadingModal(message) {
+  return `<div class="modal-overlay" id="plant-loading-modal"><div class="modal-content" style="text-align:center;padding:32px 24px"><div style="font-size:2.5rem;margin-bottom:16px;animation:pulse 1.4s ease-in-out infinite">🌿</div><div style="font-weight:600;font-size:1rem;color:var(--text-primary);margin-bottom:8px">${escapeHtml(message)}</div><div style="font-size:0.8rem;color:var(--text-muted)">Esto puede tomar unos segundos...</div></div></div>`;
+}
+
+export function renderPlantRecommendationsModal(plant, recs, pots) {
+  const plantName = plant.plantType || 'Planta identificada';
+  const sunReq   = plant.sunRequirements  || '';
+  const waterReq = plant.waterRequirements || '';
+  const meta = [sunReq, waterReq].filter(Boolean).join(' · ');
+
+  const labelColor = { 'Excelente': '#16a34a', 'Buena': '#65a30d', 'Aceptable': '#ca8a04', 'No recomendada': '#dc2626' };
+
+  const potCards = recs.map(rec => {
+    const pot = pots[rec.potIndex];
+    if (!pot) return '';
+    const color = labelColor[rec.label] || 'var(--text-muted)';
+    const scoreBar = Math.round((rec.score / 10) * 5);
+    const stars = '●'.repeat(scoreBar) + '○'.repeat(5 - scoreBar);
+    return `<button class="btn btn-secondary btn-block" data-action="plantInPot" data-pot-id="${pot.id}" style="text-align:left;display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:14px">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <span style="font-size:1.2rem">${escapeHtml(pot.emoji || '🪴')}</span>
+        <span style="font-weight:600;flex:1;font-size:0.95rem;color:var(--text-primary)">${escapeHtml(pot.name)}</span>
+        <span style="font-size:0.75rem;font-weight:700;color:${color};white-space:nowrap">${escapeHtml(rec.label)}</span>
+      </div>
+      <div style="font-size:0.72rem;color:${color};letter-spacing:1px">${stars}</div>
+      <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.4">${escapeHtml(rec.reason)}</div>
+    </button>`;
+  }).join('');
+
+  const tip = plant._tip ? `<div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:12px;padding:10px 14px;font-size:0.8rem;color:var(--text-muted);margin-top:4px">💡 ${escapeHtml(plant._tip)}</div>` : '';
+
+  return `<div class="modal-overlay" data-action="closeModal" id="plant-recs-modal"><div class="modal-content" style="max-height:85vh;overflow-y:auto"><div class="modal-handle"></div>
+    <div class="modal-title" style="margin-bottom:4px">🌱 ${escapeHtml(plantName)}</div>
+    ${meta ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;text-align:center">${escapeHtml(meta)}</div>` : ''}
+    <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">¿Dónde plantarla?</div>
+    <div class="flex flex-col gap-8">${potCards}</div>
+    ${tip}
+    <button class="btn btn-secondary btn-block" data-action="closeModal" style="margin-top:12px">Cancelar</button>
+  </div></div>`;
 }
 
 // ===== TOAST =====

@@ -399,6 +399,55 @@ export async function detectPhotoType(imageBlob) {
 }
 
 /**
+ * Recommend which existing pot is best for a newly identified plant.
+ * @param {Blob} plantBlob - photo of the new plant
+ * @param {object} plantProfile - result from analyzePlant()
+ * @param {Array} potsData - [{id, name, emoji, plantTypes, lastSun, lastWater}]
+ * @returns {Promise<{recommendations: Array, tip: string}>}
+ */
+export async function recommendPotForPlant(plantBlob, plantProfile, potsData, onRetryCountdown = null) {
+  const base64 = await compressForAI(plantBlob);
+
+  const potsText = potsData.map((p, i) => {
+    const plants = p.plantTypes?.length ? p.plantTypes.join(', ') : 'sin plantas (vacía)';
+    const sun   = p.lastSun   || 'desconocida';
+    const water = p.lastWater || 'desconocida';
+    return `${i + 1}. ${p.emoji || '🪴'} "${p.name}" — plantas actuales: ${plants} — luz: ${sun} — riego: ${water}`;
+  }).join('\n');
+
+  const prompt = `Eres un experto botánico. Esta es una foto de una planta nueva que quiero colocar en una de mis macetas.
+
+PLANTA: ${plantProfile.plantType || 'desconocida'}
+- Luz requerida: ${plantProfile.sunRequirements || 'desconocida'}
+- Agua requerida: ${plantProfile.waterRequirements || 'desconocida'}
+- Características: ${(plantProfile.characteristics || []).slice(0, 4).join(', ')}
+
+MACETAS DISPONIBLES:
+${potsText}
+
+Analiza compatibilidad de luz, agua y convivencia entre plantas. Considera que macetas vacías tienen más espacio.
+
+Responde SOLO en JSON:
+{
+  "recommendations": [
+    { "potIndex": 0, "score": 9, "label": "Excelente", "reason": "explicación breve en español" }
+  ],
+  "tip": "consejo breve opcional"
+}
+
+Incluye todas las ${potsData.length} macetas ordenadas de mejor (score alto) a peor.`;
+
+  const responseText = await callAI(base64, prompt, onRetryCountdown);
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    const match = responseText.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error('No se pudo obtener la recomendación');
+  }
+}
+
+/**
  * Check if API key is configured.
  */
 export async function isConfigured() {

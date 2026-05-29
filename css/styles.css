@@ -641,6 +641,53 @@ a { color: var(--accent); text-decoration: none; }
 }
 .pot-card-add .pot-icon { font-size: 4rem; }
 
+.pot-card-split {
+  position: relative;
+  border-radius: 20px;
+  border: 2px dashed var(--border-glass);
+  overflow: hidden;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.4s ease both;
+  transition: var(--transition);
+  cursor: pointer;
+}
+.pot-card-split:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+}
+.pot-card-split-half {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  transition: background 0.18s, color 0.18s;
+}
+.pot-card-split-half:active,
+.pot-card-split-half:hover {
+  background: rgba(45, 212, 168, 0.10);
+  color: var(--accent);
+}
+.pot-card-split-icon {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+.pot-card-split-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.pot-card-split-divider {
+  height: 1px;
+  background: var(--border-glass);
+  margin: 0 14px;
+  flex-shrink: 0;
+}
+
 /* ===== SECTION TITLES ===== */
 .section-title {
   font-size: 1.3rem;

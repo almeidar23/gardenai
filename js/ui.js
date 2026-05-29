@@ -97,8 +97,17 @@ export async function renderHome() {
       <div class="pot-name">${escapeHtml(pot.name)}</div>${plantTypeHtml}
     </div>`;
   }
-  potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPot" id="add-pot-btn"><div class="pot-icon">＋</div><div class="pot-name">Agregar</div></div>`;
-  potsHtml += `<div class="glass-card pot-card pot-card-add" data-action="addPlant" id="add-plant-btn"><div class="pot-icon">🌱</div><div class="pot-name">Nueva Planta</div></div>`;
+  potsHtml += `<div class="pot-card-split" id="add-split-btn">
+    <div class="pot-card-split-half pot-card-split-top" data-action="addPlant" id="add-plant-btn">
+      <span class="pot-card-split-icon">🌱</span>
+      <span class="pot-card-split-label">Nueva Planta</span>
+    </div>
+    <div class="pot-card-split-divider"></div>
+    <div class="pot-card-split-half pot-card-split-bottom" data-action="addPot" id="add-pot-btn">
+      <span class="pot-card-split-icon">🪴</span>
+      <span class="pot-card-split-label">Nueva Maceta</span>
+    </div>
+  </div>`;
   return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="togglePotModeMenu" id="pot-select-mode-btn" title="Opciones"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }

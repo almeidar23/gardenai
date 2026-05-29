@@ -1202,49 +1202,70 @@ export async function renderStats() {
   for (const dk of sortedDates) {
     const dayItems = groups[dk];
 
-    // --- compute summary counts ---
-    let photoCount = 0, noteCount = 0, healthyCount = 0, warningCount = 0, dangerCount = 0;
-    const taskChips = {};   // icon → {icon, label, color, count}
+    // --- compute summary with pot tracking per chip ---
+    const healthPots   = { healthy: new Set(), warning: new Set(), danger: new Set() };
+    const taskPots     = {};   // icon → { meta, potIds: Set }
+    const photoPotIds  = new Set();
+    const notePotIds   = new Set();
     const activePotIds = new Set();
 
     for (const item of dayItems) {
       activePotIds.add(item.potId);
-      if (item.type === 'photo') photoCount++;
-      if (item.type === 'note')  noteCount++;
+      if (item.type === 'photo') photoPotIds.add(item.potId);
+      if (item.type === 'note')  notePotIds.add(item.potId);
       if (item.type === 'analysis' && item.data.type === 'plant') {
         const hs = item.data.result?.healthStatus;
-        if (hs === 'healthy') healthyCount++;
-        else if (hs === 'warning') warningCount++;
-        else if (hs === 'danger')  dangerCount++;
+        if (hs === 'healthy') healthPots.healthy.add(item.potId);
+        else if (hs === 'warning') healthPots.warning.add(item.potId);
+        else if (hs === 'danger')  healthPots.danger.add(item.potId);
       }
       if (item.type === 'tasklog') {
         const slug = item.data.productSlug;
         const t = taskIcon(slug, productMap[slug]?.name || slug);
-        if (!taskChips[t.icon]) taskChips[t.icon] = { ...t, count: 0 };
-        taskChips[t.icon].count++;
+        if (!taskPots[t.icon]) taskPots[t.icon] = { ...t, potIds: new Set() };
+        taskPots[t.icon].potIds.add(item.potId);
       }
     }
 
-    // --- chip html ---
-    let chipsHtml = '';
-    if (healthyCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#16a34a">🟢 <strong>${healthyCount}</strong></span>`;
-    if (warningCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#ca8a04">🟡 <strong>${warningCount}</strong></span>`;
-    if (dangerCount)  chipsHtml += `<span class="stats-chip" style="--chip-color:#dc2626">🔴 <strong>${dangerCount}</strong></span>`;
-    for (const t of Object.values(taskChips)) {
-      chipsHtml += `<span class="stats-chip" style="--chip-color:${t.color}">${t.icon} <strong>${t.count}</strong></span>`;
+    function chipBtn(icon, label, color, potIds) {
+      const ids = [...potIds].join(',');
+      const count = potIds.size;
+      return `<button class="stats-chip" style="--chip-color:${color}"
+        data-action="statsChipDetail"
+        data-icon="${escapeHtml(icon)}"
+        data-label="${escapeHtml(label)}"
+        data-color="${escapeHtml(color)}"
+        data-pot-ids="${ids}">
+        <span class="stats-chip-icon">${icon}</span>
+        <span class="stats-chip-count">${count}</span>
+        <span class="stats-chip-label">${escapeHtml(label)}</span>
+      </button>`;
     }
-    if (photoCount) chipsHtml += `<span class="stats-chip" style="--chip-color:#6366f1">📷 <strong>${photoCount}</strong></span>`;
-    if (noteCount)  chipsHtml += `<span class="stats-chip" style="--chip-color:#0891b2">📝 <strong>${noteCount}</strong></span>`;
 
-    // --- active pot avatars ---
+    // Health row
+    let healthHtml = '';
+    if (healthPots.healthy.size) healthHtml += chipBtn('🟢','Sanas',    '#16a34a', healthPots.healthy);
+    if (healthPots.warning.size) healthHtml += chipBtn('🟡','Atención', '#ca8a04', healthPots.warning);
+    if (healthPots.danger.size)  healthHtml += chipBtn('🔴','Problema', '#dc2626', healthPots.danger);
+
+    // Actions row
+    let actionsHtml = '';
+    for (const t of Object.values(taskPots)) {
+      actionsHtml += chipBtn(t.icon, t.label, t.color, t.potIds);
+    }
+    if (photoPotIds.size) actionsHtml += chipBtn('📷', 'Fotos',   '#6366f1', photoPotIds);
+    if (notePotIds.size)  actionsHtml += chipBtn('📝', 'Notas',   '#0891b2', notePotIds);
+
+    // --- active pot avatars with names ---
     let avatarsHtml = '';
     for (const pid of activePotIds) {
       const pot = potMap[pid];
       if (!pot) continue;
       const thumb = potThumb[pid];
-      avatarsHtml += thumb
-        ? `<img class="stats-pot-avatar" src="${thumb}" alt="${escapeHtml(pot.name)}" title="${escapeHtml(pot.name)}">`
-        : `<div class="stats-pot-avatar stats-pot-avatar-emoji" title="${escapeHtml(pot.name)}">${pot.emoji || '🪴'}</div>`;
+      const img = thumb
+        ? `<img class="stats-pot-avatar" src="${thumb}" alt="">`
+        : `<div class="stats-pot-avatar stats-pot-avatar-emoji">${pot.emoji || '🪴'}</div>`;
+      avatarsHtml += `<div class="stats-pot-avatar-wrap" data-navigate="pot/${pid}">${img}<span class="stats-pot-avatar-name">${escapeHtml(pot.name)}</span></div>`;
     }
 
     // --- date label ---
@@ -1252,6 +1273,9 @@ export async function renderStats() {
     const weekday = d.toLocaleDateString('es', { weekday: 'short' }).replace('.','');
     const dayNum  = d.getDate();
     const month   = d.toLocaleDateString('es', { month: 'short' }).replace('.','');
+
+    const hasHealth  = healthHtml.length > 0;
+    const hasActions = actionsHtml.length > 0;
 
     content += `
     <div class="stats-day-row">
@@ -1262,9 +1286,12 @@ export async function renderStats() {
       </div>
       <div class="stats-day-dot"></div>
       <div class="stats-day-body glass-card">
-        <div class="stats-day-chips">${chipsHtml || '<span style="font-size:0.75rem;color:var(--text-muted)">Sin actividad</span>'}</div>
+        <div class="stats-day-top">
+          ${hasHealth ? `<div class="stats-day-chips stats-chips-health">${healthHtml}</div>` : ''}
+          <button class="stats-day-detail-btn" data-navigate="stats-day/${dk}">Ver →</button>
+        </div>
+        ${hasActions ? `<div class="stats-day-chips stats-chips-actions">${actionsHtml}</div>` : ''}
         ${avatarsHtml ? `<div class="stats-day-avatars">${avatarsHtml}</div>` : ''}
-        <button class="stats-day-detail-btn" data-navigate="stats-day/${dk}">Ver →</button>
       </div>
     </div>`;
   }
@@ -1341,6 +1368,53 @@ export async function renderStatsDayDetail(dateKey) {
   }
 
   return content || `<div class="empty-state"><p>Sin actividad este día.</p></div>`;
+}
+
+// ===== STATS CHIP MODAL =====
+export async function renderStatsChipModal(icon, label, color, potIds) {
+  const pots = await DB.getAllPots();
+  const potMap = {};
+  pots.forEach(p => { potMap[p.id] = p; });
+
+  // load thumbnails
+  const thumbMap = {};
+  await Promise.all(potIds.map(async id => {
+    const pot = potMap[id];
+    if (!pot) return;
+    const photos = await DB.getPhotosByPot(id);
+    if (!photos.length) return;
+    const main = pot.mainPhotoId ? (photos.find(p => p.id === pot.mainPhotoId) || photos[0]) : photos[0];
+    if (main.blob || main.storageUrl || main.imageData) thumbMap[id] = await getPhotoURL(main);
+  }));
+
+  const rows = potIds.map(id => {
+    const pot = potMap[id];
+    if (!pot) return '';
+    const thumb = thumbMap[id];
+    const avatar = thumb
+      ? `<img style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border-glass);flex-shrink:0" src="${thumb}" alt="">`
+      : `<div style="width:44px;height:44px;border-radius:50%;background:var(--bg-secondary);border:2px solid var(--border-glass);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0">${pot.emoji || '🪴'}</div>`;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-glass)" data-navigate="pot/${pot.id}">
+      ${avatar}
+      <span style="font-weight:600;font-size:0.95rem;flex:1;color:var(--text-primary)">${escapeHtml(pot.name)}</span>
+      <span style="font-size:0.8rem;color:var(--accent);font-weight:600">Ver →</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="modal-overlay" data-action="closeModal" id="chip-detail-modal">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <span style="font-size:2rem">${icon}</span>
+        <div>
+          <div style="font-weight:700;font-size:1.1rem;color:var(--text-primary)">${escapeHtml(label)}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">${potIds.length} maceta${potIds.length !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">${rows}</div>
+      <button class="btn btn-secondary btn-block" data-action="closeModal">Cerrar</button>
+    </div>
+  </div>`;
 }
 
 // ===== AGREGAR PLANTA =====

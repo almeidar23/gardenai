@@ -18,7 +18,8 @@ import {
   renderEmailLogin, renderRegister, renderVerifyEmail,
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
   renderAnalysisActionsModal, renderPotModeModal, renderApplyTaskModal,
-  renderAddPlantSourceModal, renderPlantLoadingModal, renderPlantRecommendationsModal
+  renderAddPlantSourceModal, renderPlantLoadingModal, renderPlantRecommendationsModal,
+  renderStatsChipModal
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -474,6 +475,14 @@ async function handleAction(action, target) {
         await DB.deletePot(Number(target.dataset.potId)); closeModal(); clearPhotoCache();
         window.location.hash = '#home'; showToast('Maceta eliminada');
       } break;
+    }
+    case 'statsChipDetail': {
+      const icon   = target.dataset.icon;
+      const label  = target.dataset.label;
+      const color  = target.dataset.color;
+      const potIds = (target.dataset.potIds || '').split(',').map(Number).filter(Boolean);
+      modalsEl().innerHTML = await renderStatsChipModal(icon, label, color, potIds);
+      break;
     }
     case 'addPlant': {
       modalsEl().innerHTML = renderAddPlantSourceModal();

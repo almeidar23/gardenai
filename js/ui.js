@@ -1202,11 +1202,11 @@ export async function renderStats() {
   for (const dk of sortedDates) {
     const dayItems = groups[dk];
 
-    // --- compute summary with pot tracking per chip ---
-    const healthPots   = { healthy: new Set(), warning: new Set(), danger: new Set() };
-    const taskPots     = {};   // icon → { meta, potIds: Set }
-    const photoPotIds  = new Set();
-    const notePotIds   = new Set();
+    // --- collect data per category ---
+    const healthPots  = { healthy: new Set(), warning: new Set(), danger: new Set() };
+    const taskPots    = {};
+    const photoPotIds = new Set();
+    const notePotIds  = new Set();
     const activePotIds = new Set();
 
     for (const item of dayItems) {
@@ -1227,55 +1227,54 @@ export async function renderStats() {
       }
     }
 
-    function chipBtn(icon, label, color, potIds) {
-      const ids = [...potIds].join(',');
+    // --- unified tile builder ---
+    // Action tile (modal on tap)
+    function actionTile(icon, label, color, potIds) {
+      const ids   = [...potIds].join(',');
       const count = potIds.size;
-      return `<button class="stats-chip" style="--chip-color:${color}"
-        data-action="statsChipDetail"
-        data-icon="${escapeHtml(icon)}"
-        data-label="${escapeHtml(label)}"
-        data-color="${escapeHtml(color)}"
-        data-pot-ids="${ids}">
-        <span class="stats-chip-icon">${icon}</span>
-        <span class="stats-chip-count">${count}</span>
-        <span class="stats-chip-label">${escapeHtml(label)}</span>
+      return `<button class="stats-tile" style="--tile-color:${color}"
+          data-action="statsChipDetail"
+          data-icon="${escapeHtml(icon)}"
+          data-label="${escapeHtml(label)}"
+          data-color="${escapeHtml(color)}"
+          data-pot-ids="${ids}">
+        <div class="stats-tile-box">
+          <span class="stats-tile-icon">${icon}</span>
+          <span class="stats-tile-count">×${count}</span>
+        </div>
+        <span class="stats-tile-name">${escapeHtml(label)}</span>
       </button>`;
     }
 
-    // Health row
-    let healthHtml = '';
-    if (healthPots.healthy.size) healthHtml += chipBtn('🟢','Sanas',    '#16a34a', healthPots.healthy);
-    if (healthPots.warning.size) healthHtml += chipBtn('🟡','Atención', '#ca8a04', healthPots.warning);
-    if (healthPots.danger.size)  healthHtml += chipBtn('🔴','Problema', '#dc2626', healthPots.danger);
-
-    // Actions row
-    let actionsHtml = '';
-    for (const t of Object.values(taskPots)) {
-      actionsHtml += chipBtn(t.icon, t.label, t.color, t.potIds);
-    }
-    if (photoPotIds.size) actionsHtml += chipBtn('📷', 'Fotos',   '#6366f1', photoPotIds);
-    if (notePotIds.size)  actionsHtml += chipBtn('📝', 'Notas',   '#0891b2', notePotIds);
-
-    // --- active pot avatars with names ---
-    let avatarsHtml = '';
-    for (const pid of activePotIds) {
-      const pot = potMap[pid];
-      if (!pot) continue;
+    // Pot tile (navigate on tap)
+    function potTile(pid) {
+      const pot   = potMap[pid];
+      if (!pot) return '';
       const thumb = potThumb[pid];
-      const img = thumb
-        ? `<img class="stats-pot-avatar" src="${thumb}" alt="">`
-        : `<div class="stats-pot-avatar stats-pot-avatar-emoji">${pot.emoji || '🪴'}</div>`;
-      avatarsHtml += `<div class="stats-pot-avatar-wrap" data-navigate="pot/${pid}">${img}<span class="stats-pot-avatar-name">${escapeHtml(pot.name)}</span></div>`;
+      const inner = thumb
+        ? `<div class="stats-tile-box stats-tile-photo" style="background-image:url('${thumb}')"></div>`
+        : `<div class="stats-tile-box" style="--tile-color:#2dd4a8"><span class="stats-tile-icon">${pot.emoji || '🪴'}</span></div>`;
+      return `<button class="stats-tile" data-navigate="pot/${pid}">
+        ${inner}
+        <span class="stats-tile-name">${escapeHtml(pot.name)}</span>
+      </button>`;
     }
+
+    // Build grid: health → tasks → photos/notes → pots
+    let tilesHtml = '';
+    if (healthPots.healthy.size) tilesHtml += actionTile('🟢', 'Sanas',     '#16a34a', healthPots.healthy);
+    if (healthPots.warning.size) tilesHtml += actionTile('🟡', 'Atención',  '#ca8a04', healthPots.warning);
+    if (healthPots.danger.size)  tilesHtml += actionTile('🔴', 'Problema',  '#dc2626', healthPots.danger);
+    for (const t of Object.values(taskPots)) tilesHtml += actionTile(t.icon, t.label, t.color, t.potIds);
+    if (photoPotIds.size) tilesHtml += actionTile('📷', 'Fotos',  '#6366f1', photoPotIds);
+    if (notePotIds.size)  tilesHtml += actionTile('📝', 'Notas',  '#0891b2', notePotIds);
+    for (const pid of activePotIds) tilesHtml += potTile(pid);
 
     // --- date label ---
     const d = new Date(dk + 'T12:00:00');
     const weekday = d.toLocaleDateString('es', { weekday: 'short' }).replace('.','');
     const dayNum  = d.getDate();
     const month   = d.toLocaleDateString('es', { month: 'short' }).replace('.','');
-
-    const hasHealth  = healthHtml.length > 0;
-    const hasActions = actionsHtml.length > 0;
 
     content += `
     <div class="stats-day-row">
@@ -1286,12 +1285,8 @@ export async function renderStats() {
       </div>
       <div class="stats-day-dot"></div>
       <div class="stats-day-body glass-card">
-        <div class="stats-day-top">
-          ${hasHealth ? `<div class="stats-day-chips stats-chips-health">${healthHtml}</div>` : ''}
-          <button class="stats-day-detail-btn" data-navigate="stats-day/${dk}">Ver →</button>
-        </div>
-        ${hasActions ? `<div class="stats-day-chips stats-chips-actions">${actionsHtml}</div>` : ''}
-        ${avatarsHtml ? `<div class="stats-day-avatars">${avatarsHtml}</div>` : ''}
+        <div class="stats-tile-grid">${tilesHtml}</div>
+        <button class="stats-day-detail-btn" data-navigate="stats-day/${dk}">Ver detalle →</button>
       </div>
     </div>`;
   }

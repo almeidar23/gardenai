@@ -1999,11 +1999,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) {
     try {
       await navigator.serviceWorker.register('./sw.js');
-      // When a new SW activates it posts SW_UPDATED — reload to get fresh JS modules
+      // When a new SW activates, show a toast — do NOT force-reload mid-session
       navigator.serviceWorker.addEventListener('message', (e) => {
         if (e.data?.type === 'SW_UPDATED') {
-          console.log('[SW] New version detected, reloading for fresh modules...');
-          window.location.reload();
+          console.log('[SW] New version available:', e.data?.version);
+          showToast('🌿 Nueva versión disponible — cerrá y volvé a abrir para actualizar', 6000);
         }
       });
     } catch(e) {}
@@ -2012,21 +2012,24 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Complete any pending Google redirect sign-in (iOS PWA flow)
   await handlePendingRedirect();
 
+  let lastUserId = null;
   onAuthChange(async (user) => {
+    const userId = user?.uid || null;
+
+    // Ignore token refresh events — only react to actual user changes
+    if (userId === lastUserId) return;
+    lastUserId = userId;
+
     clearPhotoCache();
     if (user) {
-
       await DB.init(user.uid);
       DB.registerUserProfile(user);
       const savedTheme = await DB.getSetting('theme') || 'dark';
       localStorage.setItem('gardenai-theme', savedTheme);
       applyTheme(savedTheme);
 
-      // Attempt to migrate legacy local data to Firestore
       const migrated = await runMigration();
-      if (migrated) {
-        showToast('🚀 ¡Datos locales migrados a la nube!', 5000);
-      }
+      if (migrated) showToast('🚀 ¡Datos locales migrados a la nube!', 5000);
 
       navigate(window.location.hash || '#home');
     } else {

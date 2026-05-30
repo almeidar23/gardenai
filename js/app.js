@@ -187,6 +187,7 @@ async function navigate(hash) {
   if (stale()) { _navigating = false; return; }
 
   currentRoute = newRoute;
+  document.documentElement.setAttribute('data-route', newRoute);
   if (headerHtml) {
     document.getElementById('header-title').innerHTML = headerHtml;
   } else {

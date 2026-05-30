@@ -1930,10 +1930,15 @@ function setupRegisterForm() {
 document.addEventListener('click', (e) => {
 
   const ts = e.target.closest('[data-toggle-select="task"]');
-  if (ts && taskSelectMode && !e.target.closest('[data-action]')) {
+  if (ts && !e.target.closest('[data-action]')) {
     e.preventDefault();
     const potId = ts.dataset.potId;
-    if (potId) toggleTaskPotSelection(potId);
+    if (!potId) return;
+    if (taskSelectMode) {
+      toggleTaskPotSelection(potId);
+    } else {
+      navigate(`#pot/${potId}`);
+    }
     return;
   }
 

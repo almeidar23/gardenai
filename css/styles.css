@@ -208,6 +208,88 @@
 [data-theme="tropical"] .status-warning { color: #d97706; }
 [data-theme="tropical"] .status-danger  { color: #dc2626; }
 
+/* ===== THEME: WELLNESS ===== */
+[data-theme="wellness"] {
+  --bg-primary: #ebebea;
+  --bg-secondary: #e0e0de;
+  --bg-card: rgba(250, 250, 248, 0.88);
+  --bg-glass: rgba(250, 250, 248, 0.76);
+  --border-glass: rgba(35, 95, 70, 0.18);
+  --border-subtle: rgba(35, 95, 70, 0.09);
+  --accent: #1d6b52;
+  --accent-light: #2d9070;
+  --accent-dark: #114034;
+  --accent-glow: rgba(29, 107, 82, 0.18);
+  --text-primary: #232e28;
+  --text-secondary: #3d5548;
+  --text-muted: #7a9186;
+  --danger: #b83232;
+  --warning: #b06a10;
+  --success: #1d6b52;
+  --info: #1a6080;
+  --shadow-sm: 0 2px 8px rgba(30,60,45,0.10);
+  --shadow-md: 0 4px 20px rgba(30,60,45,0.14);
+  --shadow-lg: 0 8px 40px rgba(30,60,45,0.18);
+  --shadow-glow: 0 0 28px var(--accent-glow);
+  --watermark-opacity: 1;
+  --font-display: 'Inter', sans-serif;
+}
+
+/* Background: grano de madera + ilustraciones wellness hand-drawn */
+[data-theme="wellness"] body {
+  background-color: var(--bg-primary);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500' viewBox='0 0 500 500'%3E%3C!-- wood grain lines --%3E%3Cg opacity='0.045' stroke='%23232e28' fill='none'%3E%3Cpath d='M0 60 Q125 55 250 62 Q375 69 500 60' stroke-width='1'/%3E%3Cpath d='M0 130 Q100 124 200 131 Q350 140 500 128' stroke-width='0.8'/%3E%3Cpath d='M0 200 Q150 195 300 202 Q400 207 500 198' stroke-width='1'/%3E%3Cpath d='M0 270 Q120 265 240 272 Q380 280 500 268' stroke-width='0.7'/%3E%3Cpath d='M0 340 Q180 334 340 341 Q420 345 500 338' stroke-width='0.9'/%3E%3Cpath d='M0 410 Q140 404 280 411 Q390 416 500 408' stroke-width='0.8'/%3E%3C/g%3E%3C!-- tree 1 --%33Cg transform='translate(60,180)' opacity='0.07'%3E%3Cellipse cx='0' cy='-30' rx='22' ry='28' fill='%231d6b52'/%3E%3Cellipse cx='0' cy='-52' rx='16' ry='20' fill='%231d6b52'/%3E%3Crect x='-4' y='0' width='8' height='22' fill='%23232e28'/%3E%3C/g%3E%3C!-- tree 2 --%3E%3Cg transform='translate(440,300)' opacity='0.07'%3E%3Cellipse cx='0' cy='-28' rx='20' ry='26' fill='%232d9070'/%3E%3Cellipse cx='0' cy='-48' rx='14' ry='18' fill='%231d6b52'/%3E%3Crect x='-3' y='0' width='7' height='18' fill='%23232e28'/%3E%3C/g%3E%3C!-- leaf cluster top-right --%3E%3Cg transform='translate(400,60)' opacity='0.07'%3E%3Cellipse cx='0' cy='0' rx='14' ry='8' transform='rotate(-30)' fill='%231d6b52'/%3E%3Cellipse cx='12' cy='-8' rx='12' ry='7' transform='rotate(20)' fill='%232d9070'/%3E%3Cellipse cx='-10' cy='-6' rx='11' ry='6' transform='rotate(-50)' fill='%231d6b52'/%3E%3C/g%3E%3C!-- water drop --%3E%3Cg transform='translate(320,150)' opacity='0.07'%3E%3Cpath d='M0 -18 Q8 -4 8 4 A8 8 0 0 1 -8 4 Q-8 -4 0 -18Z' fill='%231a6080'/%3E%3C/g%3E%3C!-- carrot --%3E%3Cg transform='translate(170,380)' opacity='0.065'%3E%3Cpath d='M0 0 L-6 30 Q0 36 6 30 Z' fill='%23c05a10'/%3E%3Cpath d='M-2 0 Q-8 -10 -4 -16' stroke='%231d6b52' stroke-width='1.5' fill='none'/%3E%3Cpath d='M0 0 Q0 -12 2 -18' stroke='%231d6b52' stroke-width='1.5' fill='none'/%3E%3Cpath d='M2 0 Q8 -8 6 -15' stroke='%231d6b52' stroke-width='1.5' fill='none'/%3E%3C/g%3E%3C!-- clock --%3E%3Cg transform='translate(460,420)' opacity='0.06'%3E%3Ccircle cx='0' cy='0' r='18' fill='none' stroke='%23232e28' stroke-width='2'/%3E%3Cline x1='0' y1='0' x2='0' y2='-11' stroke='%23232e28' stroke-width='1.8'/%3E%3Cline x1='0' y1='0' x2='8' y2='4' stroke='%23232e28' stroke-width='1.5'/%3E%3Ccircle cx='0' cy='-18' r='3' fill='%23232e28'/%3E%3Ccircle cx='0' cy='18' r='3' fill='%23232e28'/%3E%3C/g%3E%3C!-- wheat/grain --%3E%3Cg transform='translate(250,440)' opacity='0.07'%3E%3Cline x1='0' y1='0' x2='0' y2='-40' stroke='%231d6b52' stroke-width='1.5'/%3E%3Cellipse cx='-5' cy='-20' rx='4' ry='7' transform='rotate(-20 -5 -20)' fill='%231d6b52'/%3E%3Cellipse cx='5' cy='-25' rx='4' ry='7' transform='rotate(20 5 -25)' fill='%231d6b52'/%3E%3Cellipse cx='-4' cy='-32' rx='3' ry='6' transform='rotate(-15 -4 -32)' fill='%232d9070'/%3E%3Cellipse cx='4' cy='-36' rx='3' ry='6' transform='rotate(15 4 -36)' fill='%232d9070'/%3E%3C/g%3E%3C!-- broccoli --%3E%3Cg transform='translate(90,430)' opacity='0.065'%3E%3Crect x='-3' y='0' width='6' height='16' fill='%231d6b52'/%3E%3Ccircle cx='0' cy='-4' r='10' fill='%232d9070'/%3E%3Ccircle cx='-7' cy='-2' r='7' fill='%231d6b52'/%3E%3Ccircle cx='7' cy='-2' r='7' fill='%231d6b52'/%3E%3C/g%3E%3C!-- positive spiral --%3E%3Cg transform='translate(360,460)' opacity='0.06'%3E%3Cpath d='M0 0 Q6 -6 0 -12 Q-8 -18 -14 -10 Q-18 -2 -12 6 Q-4 12 4 8 Q10 2 6 -4' fill='none' stroke='%231d6b52' stroke-width='1.8'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 500px 500px;
+}
+
+[data-theme="wellness"] .app-header {
+  background: rgba(235, 235, 233, 0.94);
+  border-bottom: 1px solid rgba(35, 95, 70, 0.14);
+}
+
+[data-theme="wellness"] .bottom-nav {
+  background: rgba(235, 235, 233, 0.96);
+  border-top: 1px solid rgba(35, 95, 70, 0.14);
+}
+
+[data-theme="wellness"] .glass-card {
+  background: rgba(252, 252, 250, 0.91);
+  border: 1px solid rgba(35, 95, 70, 0.15);
+  box-shadow: 0 2px 12px rgba(30, 60, 45, 0.08);
+}
+
+[data-theme="wellness"] .glass-card:hover {
+  border-color: rgba(35, 95, 70, 0.32);
+  box-shadow: 0 5px 22px rgba(30, 60, 45, 0.14);
+  transform: translateY(-2px);
+}
+
+[data-theme="wellness"] .btn-primary {
+  background: linear-gradient(135deg, #2d9070, #114034);
+  box-shadow: 0 2px 10px rgba(29, 107, 82, 0.32);
+}
+
+[data-theme="wellness"] .form-input {
+  background: rgba(252, 252, 250, 0.92);
+  border-color: rgba(35, 95, 70, 0.22);
+  color: var(--text-primary);
+}
+
+[data-theme="wellness"] .form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29, 107, 82, 0.12);
+}
+
+[data-theme="wellness"] .modal-content {
+  background: #f8f8f6;
+  border: 1px solid rgba(35, 95, 70, 0.18);
+}
+
+[data-theme="wellness"] .status-healthy { color: #1d6b52; }
+[data-theme="wellness"] .status-warning { color: #b06a10; }
+[data-theme="wellness"] .status-danger  { color: #b83232; }
+
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

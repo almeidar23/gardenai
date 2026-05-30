@@ -26,7 +26,7 @@ import { runMigration } from './migration.js';
 const mainEl = () => document.getElementById('main-content');
 
 function applyTheme(theme) {
-  const validThemes = ['botanical', 'tropical'];
+  const validThemes = ['botanical', 'tropical', 'wellness'];
   document.documentElement.setAttribute('data-theme', validThemes.includes(theme) ? theme : '');
 }
 const modalsEl = () => document.getElementById('modals');
@@ -178,6 +178,7 @@ async function navigate(hash) {
         <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='dark'?'1':'0.4'}" data-action="setTheme" data-theme="dark" title="Jardín Nocturno">🌙</button>
         <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='botanical'?'1':'0.4'}" data-action="setTheme" data-theme="botanical" title="Botanical">🌿</button>
         <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='tropical'?'1':'0.4'}" data-action="setTheme" data-theme="tropical" title="Jardín Vivo">🌺</button>
+        <button class="btn btn-sm" style="padding:4px 8px;font-size:0.7rem;opacity:${currentTheme==='wellness'?'1':'0.4'}" data-action="setTheme" data-theme="wellness" title="Wellness">🫚</button>
       </div>`;
     html = await renderSettings();
   }

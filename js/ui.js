@@ -97,18 +97,20 @@ export async function renderHome() {
       <div class="pot-name">${escapeHtml(pot.name)}</div>${plantTypeHtml}
     </div>`;
   }
-  potsHtml += `<div class="pot-card-split" id="add-split-btn">
-    <div class="pot-card-split-half pot-card-split-top" data-action="addPlant" id="add-plant-btn">
-      <span class="pot-card-split-icon">🌱</span>
-      <span class="pot-card-split-label">Nueva Planta</span>
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px">
+    <div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="btn btn-icon btn-secondary home-action-btn" data-action="addPlant" id="add-plant-btn" title="Nueva Planta">
+        <span style="font-size:1.1rem">🌱</span>
+      </button>
+      <button class="btn btn-icon btn-secondary home-action-btn" data-action="addPot" id="add-pot-btn" title="Nueva Maceta">
+        <span style="font-size:1.1rem">🪴</span>
+      </button>
+      <button class="btn btn-icon btn-secondary" data-action="togglePotModeMenu" id="pot-select-mode-btn" title="Opciones">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <div class="pot-card-split-divider"></div>
-    <div class="pot-card-split-half pot-card-split-bottom" data-action="addPot" id="add-pot-btn">
-      <span class="pot-card-split-icon">🪴</span>
-      <span class="pot-card-split-label">Nueva Maceta</span>
-    </div>
-  </div>`;
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div><button class="btn btn-icon btn-secondary" data-action="togglePotModeMenu" id="pot-select-mode-btn" title="Opciones"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  </div>
     <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 
@@ -1424,38 +1426,66 @@ export function renderPlantLoadingModal(message) {
 
 export function renderPlantRecommendationsModal(plant, recs, pots) {
   const plantName = plant.plantType || 'Planta identificada';
-  const sunReq   = plant.sunRequirements  || '';
-  const waterReq = plant.waterRequirements || '';
-  const meta = [sunReq, waterReq].filter(Boolean).join(' · ');
-
   const labelColor = { 'Excelente': '#16a34a', 'Buena': '#65a30d', 'Aceptable': '#ca8a04', 'No recomendada': '#dc2626' };
 
-  const potCards = recs.map(rec => {
+  // Key requirements as chips
+  const reqChips = [];
+  if (plant.sunRequirements)   reqChips.push(`☀️ ${plant.sunRequirements}`);
+  if (plant.waterRequirements) reqChips.push(`💧 ${plant.waterRequirements}`);
+  const reqHtml = reqChips.map(r =>
+    `<span style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:20px;padding:4px 10px;font-size:0.75rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${escapeHtml(r)}</span>`
+  ).join('');
+
+  // Top pick (#1)
+  const top = recs[0];
+  const topPot = top ? pots[top.potIndex] : null;
+  const topColor = top ? (labelColor[top.label] || '#16a34a') : '#16a34a';
+  const topHtml = topPot ? `
+    <div style="background:color-mix(in srgb,${topColor} 10%,var(--bg-secondary));border:2px solid color-mix(in srgb,${topColor} 40%,transparent);border-radius:16px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:1.4rem">${escapeHtml(topPot.emoji||'🪴')}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:1rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(topPot.name)}</div>
+          <div style="font-size:0.72rem;font-weight:700;color:${topColor}">${escapeHtml(top.label||'')} · ${top.score}/10</div>
+        </div>
+      </div>
+      <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.5;margin:0 0 14px;word-break:break-word">${escapeHtml(top.reason||'')}</p>
+      <button class="btn btn-primary btn-block" data-action="plantInPot" data-pot-id="${topPot.id}" style="font-size:0.9rem">🌱 Plantar aquí</button>
+    </div>` : '';
+
+  // Rest (compact rows, no reason text)
+  const restHtml = recs.slice(1).map(rec => {
     const pot = pots[rec.potIndex];
     if (!pot) return '';
     const color = labelColor[rec.label] || 'var(--text-muted)';
-    const scoreBar = Math.round((rec.score / 10) * 5);
-    const stars = '●'.repeat(scoreBar) + '○'.repeat(5 - scoreBar);
-    return `<button class="btn btn-secondary btn-block" data-action="plantInPot" data-pot-id="${pot.id}" style="text-align:left;display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:14px">
-      <div style="display:flex;align-items:center;gap:8px;width:100%">
-        <span style="font-size:1.2rem">${escapeHtml(pot.emoji || '🪴')}</span>
-        <span style="font-weight:600;flex:1;font-size:0.95rem;color:var(--text-primary)">${escapeHtml(pot.name)}</span>
-        <span style="font-size:0.75rem;font-weight:700;color:${color};white-space:nowrap">${escapeHtml(rec.label)}</span>
-      </div>
-      <div style="font-size:0.72rem;color:${color};letter-spacing:1px">${stars}</div>
-      <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.4">${escapeHtml(rec.reason)}</div>
+    return `<button class="btn btn-secondary btn-block" data-action="plantInPot" data-pot-id="${pot.id}"
+      style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;text-align:left">
+      <span style="font-size:1.1rem;flex-shrink:0">${escapeHtml(pot.emoji||'🪴')}</span>
+      <span style="font-weight:600;font-size:0.88rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary)">${escapeHtml(pot.name)}</span>
+      <span style="font-size:0.72rem;font-weight:700;color:${color};white-space:nowrap;flex-shrink:0">${escapeHtml(rec.label||'')}</span>
     </button>`;
   }).join('');
 
-  const tip = plant._tip ? `<div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:12px;padding:10px 14px;font-size:0.8rem;color:var(--text-muted);margin-top:4px">💡 ${escapeHtml(plant._tip)}</div>` : '';
+  const moreSection = restHtml ? `
+    <details style="margin-bottom:8px">
+      <summary style="font-size:0.8rem;color:var(--accent);font-weight:600;cursor:pointer;list-style:none;padding:6px 0">
+        ＋ Más opciones
+      </summary>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">${restHtml}</div>
+    </details>` : '';
 
-  return `<div class="modal-overlay" data-action="closeModal" id="plant-recs-modal"><div class="modal-content" style="max-height:85vh;overflow-y:auto"><div class="modal-handle"></div>
-    <div class="modal-title" style="margin-bottom:4px">🌱 ${escapeHtml(plantName)}</div>
-    ${meta ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:16px;text-align:center">${escapeHtml(meta)}</div>` : ''}
-    <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">¿Dónde plantarla?</div>
-    <div class="flex flex-col gap-8">${potCards}</div>
+  const tip = plant._tip ? `<div style="background:var(--bg-secondary);border:1px solid var(--border-glass);border-radius:12px;padding:10px 14px;font-size:0.8rem;color:var(--text-muted);word-break:break-word">💡 ${escapeHtml(plant._tip)}</div>` : '';
+
+  return `<div class="modal-overlay" data-action="closeModal" id="plant-recs-modal">
+  <div class="modal-content" style="max-height:88vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="margin-bottom:8px">🌱 ${escapeHtml(plantName)}</div>
+    ${reqHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${reqHtml}</div>` : ''}
+    <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">Mejor maceta</div>
+    ${topHtml}
+    ${moreSection}
     ${tip}
-    <button class="btn btn-secondary btn-block" data-action="closeModal" style="margin-top:12px">Cancelar</button>
+    <button class="btn btn-secondary btn-block" data-action="closeModal" style="margin-top:10px">Cancelar</button>
   </div></div>`;
 }
 

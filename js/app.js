@@ -338,25 +338,22 @@ async function handleAction(action, target) {
     }
     case 'enterPotSelectModeTask': {
       if (!taskSelectMode) {
-        // First click: enter selection mode
+        // Primer click: entrar en modo selección
         taskSelectMode = true;
         showToast('Toca macetas para seleccionar');
         updateTaskSelectAllBtn();
       } else {
-        // Already in select mode: toggle select-all / deselect-all
         const allIds = getAllTaskPotIds();
         const allSelected = allIds.length > 0 && allIds.every(id => selectedPotsTask.has(id));
-        if (allSelected) {
-          // Deselect all (stay in select mode)
-          selectedPotsTask.clear();
-          document.querySelectorAll('[data-toggle-select="task"].pot-selected').forEach(el => {
-            el.classList.remove('pot-selected');
-            el.querySelector('.pot-select-check')?.classList.remove('checked');
-          });
-          document.getElementById('task-bulk-bar')?.remove();
-          showToast('Selección eliminada');
+        const noneSelected = selectedPotsTask.size === 0;
+
+        if (allSelected || noneSelected) {
+          // Todo seleccionado o nada seleccionado → salir del modo
+          taskSelectMode = false;
+          clearTaskPotSelection();
+          showToast('Selección cancelada');
         } else {
-          // Select all visible pots
+          // Selección parcial → seleccionar todo
           for (const id of allIds) {
             if (!selectedPotsTask.has(id)) {
               selectedPotsTask.add(id);

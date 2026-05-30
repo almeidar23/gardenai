@@ -14,6 +14,7 @@ git commit -m "$MSG"
 git push
 
 echo ""
-echo "✅ Listo — Bluehost se actualiza en ~1 minuto"
+echo "🚀 Desplegando en servidor..."
+curl -s "https://7ire.com/gardenai/deploy.php?token=GardenDeploy2026!" > /dev/null && echo "✅ Listo — app actualizada en 7ire.com/gardenai" || echo "⚠️  Push ok pero deploy manual en: 7ire.com/gardenai/deploy.php?token=GardenDeploy2026!"
 echo "Presioná Enter para cerrar"
 read

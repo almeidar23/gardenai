@@ -485,21 +485,11 @@ async function handleAction(action, target) {
       break;
     }
     case 'addPlant': {
-      modalsEl().innerHTML = renderAddPlantSourceModal();
-      break;
-    }
-    case 'captureNewPlant':
-    case 'uploadNewPlant': {
       try {
-        closeModal();
-        const blob = action === 'captureNewPlant'
-          ? await captureFromCamera()
-          : await uploadFromGallery();
+        const blob = await uploadFromGallery();
         await runAddPlantFlow(blob);
       } catch (e) {
-        if (e.message !== 'No se tomó ninguna foto' && e.message !== 'No se seleccionó ninguna foto') {
-          showToast('Error: ' + e.message);
-        }
+        if (e.message !== 'No se seleccionó ninguna foto') showToast('Error: ' + e.message);
       }
       break;
     }

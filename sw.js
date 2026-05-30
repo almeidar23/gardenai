@@ -1,6 +1,6 @@
 // sw.js — Service Worker for GardenAI PWA
 
-const CACHE_NAME = 'gardenai-v125';
+const CACHE_NAME = 'gardenai-v126';
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,8 @@ const ASSETS = [
   './js/ai.js',
   './js/ui.js',
   './js/migration.js',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './wellness-bg.png'
 ];
 
 // Install — cache core assets

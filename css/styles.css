@@ -244,18 +244,6 @@
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
-[data-theme="wellness"] body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(235,235,232,0.52);
-  pointer-events: none;
-  z-index: 0;
-}
-[data-theme="wellness"] #app {
-  position: relative;
-  z-index: 1;
-}
 
 [data-theme="wellness"] .app-header {
   background: rgba(235, 235, 233, 0.94);
@@ -304,57 +292,31 @@
 [data-theme="wellness"] .status-warning { color: #b06a10; }
 [data-theme="wellness"] .status-danger  { color: #b83232; }
 
-/* ── Wellness: variaciones por ruta con CSS filter ── */
+/* ── Wellness: variaciones por ruta — filter solo sobre el fondo, no sobre la UI ── */
+/* Usamos background-color del body para teñir ligeramente la imagen */
 
-/* HOME — imagen original, overlay neutro */
-[data-theme="wellness"][data-route="home"] body::before {
-  background: rgba(235,235,232,0.50);
-}
-
-/* TASKS — tono ligeramente más cálido/amarillento */
 [data-theme="wellness"][data-route="tasks"] body {
-  filter: sepia(12%) saturate(0.92) hue-rotate(-8deg);
+  background-color: rgba(200,180,140,0.18);
+  background-blend-mode: multiply;
 }
-[data-theme="wellness"][data-route="tasks"] body::before {
-  background: rgba(240,236,224,0.50);
-}
-
-/* STATS — tono más frío/azulado */
 [data-theme="wellness"][data-route="stats"] body,
 [data-theme="wellness"][data-route="stats-day"] body {
-  filter: hue-rotate(18deg) saturate(0.88) brightness(1.03);
+  background-color: rgba(140,180,200,0.18);
+  background-blend-mode: multiply;
 }
-[data-theme="wellness"][data-route="stats"] body::before,
-[data-theme="wellness"][data-route="stats-day"] body::before {
-  background: rgba(228,236,235,0.52);
-}
-
-/* PRODUCTS — más saturado y vibrante */
 [data-theme="wellness"][data-route="products"] body,
 [data-theme="wellness"][data-route="product"] body {
-  filter: saturate(1.18) brightness(0.97) hue-rotate(6deg);
+  background-color: rgba(130,190,150,0.20);
+  background-blend-mode: multiply;
 }
-[data-theme="wellness"][data-route="products"] body::before,
-[data-theme="wellness"][data-route="product"] body::before {
-  background: rgba(230,238,232,0.50);
-}
-
-/* SETTINGS — más desaturado/gris, minimalista */
 [data-theme="wellness"][data-route="settings"] body {
-  filter: saturate(0.65) brightness(1.04) contrast(0.95);
+  background-color: rgba(180,180,175,0.28);
+  background-blend-mode: multiply;
 }
-[data-theme="wellness"][data-route="settings"] body::before {
-  background: rgba(238,237,234,0.56);
-}
-
-/* POT / PHOTO — más cálido y suave */
 [data-theme="wellness"][data-route="pot"] body,
 [data-theme="wellness"][data-route="photo"] body {
-  filter: sepia(8%) saturate(1.08) hue-rotate(-12deg) brightness(0.98);
-}
-[data-theme="wellness"][data-route="pot"] body::before,
-[data-theme="wellness"][data-route="photo"] body::before {
-  background: rgba(238,234,228,0.50);
+  background-color: rgba(210,185,155,0.18);
+  background-blend-mode: multiply;
 }
 
 /* ===== RESET ===== */

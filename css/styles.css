@@ -238,7 +238,9 @@
 /* Background: grano de madera + ilustraciones wellness hand-drawn */
 [data-theme="wellness"] body {
   background-color: var(--bg-primary);
-  background-image: url('../wellness-bg.png');
+  background-image:
+    linear-gradient(rgba(235,235,232,0.82), rgba(235,235,232,0.82)),
+    url('../wellness-bg.png');
   background-size: cover;
   background-position: center center;
   background-attachment: fixed;
@@ -296,27 +298,22 @@
 /* Usamos background-color del body para teñir ligeramente la imagen */
 
 [data-theme="wellness"][data-route="tasks"] body {
-  background-color: rgba(200,180,140,0.18);
-  background-blend-mode: multiply;
+  background-image: linear-gradient(rgba(240,237,228,0.84), rgba(240,237,228,0.84)), url('../wellness-bg.png');
 }
 [data-theme="wellness"][data-route="stats"] body,
 [data-theme="wellness"][data-route="stats-day"] body {
-  background-color: rgba(140,180,200,0.18);
-  background-blend-mode: multiply;
+  background-image: linear-gradient(rgba(228,235,236,0.84), rgba(228,235,236,0.84)), url('../wellness-bg.png');
 }
 [data-theme="wellness"][data-route="products"] body,
 [data-theme="wellness"][data-route="product"] body {
-  background-color: rgba(130,190,150,0.20);
-  background-blend-mode: multiply;
+  background-image: linear-gradient(rgba(228,237,231,0.83), rgba(228,237,231,0.83)), url('../wellness-bg.png');
 }
 [data-theme="wellness"][data-route="settings"] body {
-  background-color: rgba(180,180,175,0.28);
-  background-blend-mode: multiply;
+  background-image: linear-gradient(rgba(236,236,234,0.86), rgba(236,236,234,0.86)), url('../wellness-bg.png');
 }
 [data-theme="wellness"][data-route="pot"] body,
 [data-theme="wellness"][data-route="photo"] body {
-  background-color: rgba(210,185,155,0.18);
-  background-blend-mode: multiply;
+  background-image: linear-gradient(rgba(238,233,226,0.84), rgba(238,233,226,0.84)), url('../wellness-bg.png');
 }
 
 /* ===== RESET ===== */

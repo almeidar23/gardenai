@@ -961,6 +961,10 @@ export async function renderSettings() {
           <div class="theme-preview theme-preview-tropical"></div>
           <span>Jardín Vivo</span>
         </button>
+        <button class="theme-option ${currentTheme==='wellness'?'active':''}" data-action="setTheme" data-theme="wellness">
+          <div class="theme-preview theme-preview-wellness"></div>
+          <span>Wellness</span>
+        </button>
       </div>
     </div></div>
     ${aiSection}

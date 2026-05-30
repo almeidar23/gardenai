@@ -1650,6 +1650,18 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   opacity: 0.9;
 }
 
+.theme-preview-wellness {
+  background: linear-gradient(135deg, #e8e8e5 0%, #d8ede5 60%, #cce0d8 100%);
+}
+.theme-preview-wellness::after {
+  content: '🌲 🥕 💧';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+
 .photo-actions-row {
   display: flex;
   gap: 8px;

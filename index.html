@@ -15,12 +15,14 @@
   <link rel="stylesheet" href="./css/styles.css">
   <title>GardenAI — Jardín Inteligente</title>
   <script>
-    // Apply saved theme instantly before first paint — eliminates black flash
+    // Apply saved theme instantly before first paint — eliminates flash
     (function() {
-      var t = localStorage.getItem('gardenai-theme');
-      if (t === 'botanical' || t === 'tropical') {
-        document.documentElement.setAttribute('data-theme', t);
-      }
+      var t = localStorage.getItem('gardenai-theme') || 'dark';
+      var bg = { dark: '#0a0f0d', botanical: '#f5f0e8', tropical: '#f0fdf4', wellness: '#e8e8e5' };
+      // Set background color inline so it's correct before CSS even parses
+      document.documentElement.style.background = bg[t] || '#0a0f0d';
+      // Set data-theme for non-dark themes
+      if (t !== 'dark') document.documentElement.setAttribute('data-theme', t);
     })();
   </script>
 </head>
@@ -34,7 +36,7 @@
       </a>
       <div class="header-title" id="header-title"></div>
       <div class="header-right">
-        <span class="app-version">v5.6.7</span>
+        <span class="app-version">v5.6.8</span>
         <button class="header-settings-btn" data-nav="settings" id="nav-settings" title="Ajustes">⚙️</button>
       </div>
     </header>

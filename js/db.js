@@ -371,12 +371,15 @@ const DB = {
   },
 
   async _seedProducts() {
+    // Skip the Firestore check if we already confirmed products exist this session
+    if (sessionStorage.getItem('gardenai-seeded')) return;
     const snap = await getDocs(col('products'));
     if (snap.empty) {
       await Promise.all(DEFAULT_PRODUCTS.map(p =>
         setDoc(docRef('products', p.slug), { ...p, createdAt: new Date().toISOString() })
       ));
     }
+    sessionStorage.setItem('gardenai-seeded', '1');
   },
 
   async getGlobalConfig() {

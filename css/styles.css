@@ -1611,75 +1611,44 @@ textarea.form-input { resize: vertical; min-height: 80px; }
 
 /* ===== THEME PICKER ===== */
 .theme-picker {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
+  gap: 8px;
 }
 .theme-option {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 6px;
+  padding: 10px 4px;
   border-radius: var(--radius-md);
   border: 2px solid var(--border-glass);
   background: transparent;
   cursor: pointer;
   transition: var(--transition);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   font-weight: 500;
+  line-height: 1.2;
 }
 .theme-option.active {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-glow);
 }
-.theme-preview {
-  width: 100%;
-  height: 60px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  position: relative;
+.theme-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: block;
+  flex-shrink: 0;
 }
-.theme-preview-dark {
-  background: linear-gradient(135deg, #0a0f0d 0%, #111a16 50%, #0d9473 100%);
-}
-.theme-preview-dark::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    45deg, transparent, transparent 4px,
-    rgba(45,212,168,0.08) 4px, rgba(45,212,168,0.08) 5px
-  );
-}
-.theme-preview-botanical {
-  background: linear-gradient(135deg, #f5f0e8 0%, #ede8df 50%, #c8d9b8 100%);
-}
-.theme-preview-botanical::after {
-  content: '🌿 🌸 🍃';
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 0.7rem;
-  opacity: 0.6;
-}
-.theme-preview-tropical {
-  background: linear-gradient(135deg, #f0fdf4 0%, #fffbeb 50%, #f0fdfa 100%);
-}
-.theme-preview-tropical::after {
-  content: '🌿 🌸 🌱';
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 0.7rem;
-  opacity: 0.9;
-}
+.theme-dot-dark     { background: linear-gradient(135deg, #0d9473, #0a0f0d); }
+.theme-dot-botanical{ background: linear-gradient(135deg, #c8d9b8, #f5f0e8); border: 1px solid rgba(0,0,0,0.08); }
+.theme-dot-tropical { background: linear-gradient(135deg, #22c55e, #fffbeb); border: 1px solid rgba(0,0,0,0.06); }
+.theme-dot-wellness { background: linear-gradient(135deg, #6b9e7e, #e8e8e5); border: 1px solid rgba(0,0,0,0.06); }
 
-.theme-preview-wellness {
-  background: linear-gradient(135deg, #e8e8e5 0%, #d8ede5 60%, #cce0d8 100%);
-}
+/* legacy — keep so any stale cached HTML doesn't crash */
 .theme-preview-wellness::after {
   content: '🌲 🥕 💧';
   position: absolute;

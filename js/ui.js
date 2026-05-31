@@ -947,22 +947,22 @@ export async function renderSettings() {
   const currentTheme = currentThemeRaw || 'dark';
 
   return `<div class="settings-section"><div class="glass-card" style="margin-top:0">
-      <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">🎨 Tema actual</div>
+      <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px">🎨 Tema actual</div>
       <div class="theme-picker">
         <button class="theme-option ${currentTheme==='dark'?'active':''}" data-action="setTheme" data-theme="dark">
-          <div class="theme-preview theme-preview-dark"></div>
-          <span>Jardín Nocturno</span>
+          <span class="theme-dot theme-dot-dark"></span>
+          <span>Nocturno</span>
         </button>
         <button class="theme-option ${currentTheme==='botanical'?'active':''}" data-action="setTheme" data-theme="botanical">
-          <div class="theme-preview theme-preview-botanical"></div>
+          <span class="theme-dot theme-dot-botanical"></span>
           <span>Botanical</span>
         </button>
         <button class="theme-option ${currentTheme==='tropical'?'active':''}" data-action="setTheme" data-theme="tropical">
-          <div class="theme-preview theme-preview-tropical"></div>
-          <span>Jardín Vivo</span>
+          <span class="theme-dot theme-dot-tropical"></span>
+          <span>Tropical</span>
         </button>
         <button class="theme-option ${currentTheme==='wellness'?'active':''}" data-action="setTheme" data-theme="wellness">
-          <div class="theme-preview theme-preview-wellness"></div>
+          <span class="theme-dot theme-dot-wellness"></span>
           <span>Wellness</span>
         </button>
       </div>

@@ -2022,22 +2022,23 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     clearPhotoCache();
     if (user) {
-      // Apply theme from localStorage immediately — no flash while Firestore loads
+      // Apply theme from localStorage immediately — no flash
       const cachedTheme = localStorage.getItem('gardenai-theme') || 'dark';
       applyTheme(cachedTheme);
-      showLoading();
 
-      // Init DB (sets uid, seeds products) then fetch confirmed theme
+      // Only await DB.init (sets uid) — everything else runs in background
       await DB.init(user.uid);
-      const savedTheme = await DB.getSetting('theme') || 'dark';
-      localStorage.setItem('gardenai-theme', savedTheme);
-      if (savedTheme !== cachedTheme) applyTheme(savedTheme);
-
-      // Render the page immediately — don't block on migration
       DB.registerUserProfile(user);
       navigate(window.location.hash || '#home');
 
-      // Migration runs in background after page is visible
+      // Confirm theme from Firestore in background — updates if different
+      DB.getSetting('theme').then(savedTheme => {
+        const theme = savedTheme || 'dark';
+        localStorage.setItem('gardenai-theme', theme);
+        if (theme !== cachedTheme) applyTheme(theme);
+      });
+
+      // Migration in background — never blocks initial render
       runMigration().then(migrated => {
         if (migrated) showToast('🚀 ¡Datos locales migrados a la nube!', 5000);
       });

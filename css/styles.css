@@ -1812,20 +1812,34 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   position: relative;
   user-select: none;
   -webkit-user-select: none;
-  animation: reorder-pulse 0.3s ease;
+  animation: ios-wiggle 0.22s ease-in-out both;
+  transform-origin: center center;
 }
-.pots-grid.reorder-mode .drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Alternate cards wiggle in opposite direction for iOS feel */
+.pots-grid.reorder-mode .pot-card:not(.pot-card-add):nth-child(even) {
+  animation-name: ios-wiggle-r;
 }
 .pots-grid.reorder-mode .pot-card:not(.pot-card-add):active {
   cursor: grabbing;
+  animation: none;
 }
-@keyframes reorder-pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(0.97); }
-  100% { transform: scale(1); }
+@keyframes ios-wiggle {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-1.8deg); }
+  50%  { transform: rotate(1.8deg); }
+  75%  { transform: rotate(-1.2deg); }
+  100% { transform: rotate(-1.5deg); }
+}
+@keyframes ios-wiggle-r {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(1.8deg); }
+  50%  { transform: rotate(-1.8deg); }
+  75%  { transform: rotate(1.2deg); }
+  100% { transform: rotate(1.5deg); }
+}
+/* Keep wiggling while in reorder mode */
+.pots-grid.reorder-mode .pot-card:not(.pot-card-add) {
+  animation-fill-mode: forwards;
 }
 
 .pots-grid.select-mode .pot-card.pot-selected {

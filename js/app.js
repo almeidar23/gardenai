@@ -1993,6 +1993,41 @@ document.addEventListener('change', (e) => {
   }
 });
 
+// ===== LONG PRESS → REORDER MODE =====
+(function setupLongPress() {
+  let _lp = null; // { timer, card }
+
+  function cancelLP() {
+    if (_lp) { clearTimeout(_lp.timer); _lp = null; }
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (reorderMode) return;
+    const card = e.target.closest('.pot-card[data-pot-id]:not(.pot-card-add)');
+    if (!card || currentRoute !== 'home') return;
+    cancelLP();
+    _lp = {
+      card,
+      timer: setTimeout(() => {
+        _lp = null;
+        // Haptic feedback (iOS)
+        if (navigator.vibrate) navigator.vibrate(30);
+        closeModal();
+        startReorderMode();
+      }, 500)
+    };
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!_lp) return;
+    const dx = e.movementX ?? 0, dy = e.movementY ?? 0;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) cancelLP();
+  });
+
+  document.addEventListener('pointerup',     cancelLP);
+  document.addEventListener('pointercancel', cancelLP);
+})();
+
 // ===== INIT =====
 window.addEventListener('hashchange', () => navigate(window.location.hash));
 window.addEventListener('DOMContentLoaded', async () => {

@@ -648,10 +648,6 @@ export function renderPotModeModal() {
         <button class="btn btn-secondary btn-block" data-action="openApplyTask" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
           📋 Aplicar tarea
         </button>
-        <button class="btn btn-secondary btn-block" data-action="enterReorderMode" style="justify-content:flex-start;gap:12px;font-size:0.95rem">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="4" cy="8" r="1.5" fill="currentColor"/><circle cx="12" cy="8" r="1.5" fill="currentColor"/><circle cx="20" cy="8" r="1.5" fill="currentColor"/><circle cx="4" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/><circle cx="20" cy="16" r="1.5" fill="currentColor"/></svg>
-          Mover macetas
-        </button>
       </div>
     </div>
   </div>`;

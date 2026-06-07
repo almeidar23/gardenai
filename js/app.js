@@ -1713,17 +1713,28 @@ function onTwoFingerTouchStart(e) {
   if (e.touches.length < 2) return;
   // Cancel any active drag
   if (_drag) onDragPointerUp();
-  // Temporarily allow scroll with 2 fingers
-  const grid = document.getElementById('pots-grid');
-  if (!grid) return;
-  grid.style.touchAction = 'pan-y';
-  const restore = () => {
-    grid.style.touchAction = '';
-    document.removeEventListener('touchend', restore);
-    document.removeEventListener('touchcancel', restore);
-  };
-  document.addEventListener('touchend', restore, { once: true });
-  document.addEventListener('touchcancel', restore, { once: true });
+
+  // Implement manual scroll — iOS ignores touch-action changes mid-gesture
+  let lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+  function onTwoMove(ev) {
+    if (ev.touches.length < 2) return;
+    ev.preventDefault();
+    const currentY = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
+    const delta = lastY - currentY;
+    window.scrollBy(0, delta);
+    lastY = currentY;
+  }
+
+  function onTwoEnd() {
+    document.removeEventListener('touchmove', onTwoMove);
+    document.removeEventListener('touchend', onTwoEnd);
+    document.removeEventListener('touchcancel', onTwoEnd);
+  }
+
+  document.addEventListener('touchmove', onTwoMove, { passive: false });
+  document.addEventListener('touchend', onTwoEnd, { once: true });
+  document.addEventListener('touchcancel', onTwoEnd, { once: true });
 }
 
 function startReorderMode() {

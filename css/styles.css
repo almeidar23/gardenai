@@ -525,11 +525,8 @@ a { color: var(--accent); text-decoration: none; }
   gap: 8px;
 }
 
-/* Reorder mode: allow 2-finger scroll */
+/* Reorder mode: touch-action none for drag (JS handles 2-finger scroll) */
 .pots-grid.reorder-mode {
-  touch-action: pan-y pinch-zoom;
-}
-.pots-grid.reorder-mode .pot-card[data-pot-id].dragging {
   touch-action: none;
 }
 

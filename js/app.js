@@ -1709,6 +1709,23 @@ function updateReorderBtn(active) {
   }
 }
 
+function onTwoFingerTouchStart(e) {
+  if (e.touches.length < 2) return;
+  // Cancel any active drag
+  if (_drag) onDragPointerUp();
+  // Temporarily allow scroll with 2 fingers
+  const grid = document.getElementById('pots-grid');
+  if (!grid) return;
+  grid.style.touchAction = 'pan-y';
+  const restore = () => {
+    grid.style.touchAction = '';
+    document.removeEventListener('touchend', restore);
+    document.removeEventListener('touchcancel', restore);
+  };
+  document.addEventListener('touchend', restore, { once: true });
+  document.addEventListener('touchcancel', restore, { once: true });
+}
+
 function startReorderMode() {
   reorderMode = true;
   const grid = document.getElementById('pots-grid');
@@ -1716,9 +1733,9 @@ function startReorderMode() {
   grid.classList.add('reorder-mode');
   reorderPotIds = [...grid.querySelectorAll('.pot-card[data-pot-id]')].map(el => el.dataset.potId);
   updateReorderBtn(true);
-  // Attach drag listeners to the grid (event delegation)
   grid.addEventListener('pointerdown', onDragPointerDown);
-  showToast('Arrastra las macetas • Toca ✅ para guardar');
+  grid.addEventListener('touchstart', onTwoFingerTouchStart, { passive: true });
+  showToast('Arrastra • 2 dedos para scroll • ✅ para guardar');
 }
 
 async function saveReorderMode() {
@@ -1737,7 +1754,12 @@ function cancelReorderMode() {
   reorderPotIds = [];
   if (_drag) { _drag.clone?.remove(); if (_drag.card) _drag.card.style.opacity = ''; _drag = null; }
   const grid = document.getElementById('pots-grid');
-  if (grid) { grid.classList.remove('reorder-mode'); grid.removeEventListener('pointerdown', onDragPointerDown); }
+  if (grid) {
+    grid.classList.remove('reorder-mode');
+    grid.style.touchAction = '';
+    grid.removeEventListener('pointerdown', onDragPointerDown);
+    grid.removeEventListener('touchstart', onTwoFingerTouchStart);
+  }
   updateReorderBtn(false);
 }
 

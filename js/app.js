@@ -2071,11 +2071,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) {
     try {
       await navigator.serviceWorker.register('./sw.js');
-      // When a new SW activates, show a toast — do NOT force-reload mid-session
+      // When a new SW activates: reload if app just opened (<10s), else show toast
+      const _appStartTime = Date.now();
       navigator.serviceWorker.addEventListener('message', (e) => {
         if (e.data?.type === 'SW_UPDATED') {
-          console.log('[SW] New version available:', e.data?.version);
-          showToast('🌿 Nueva versión disponible — cerrá y volvé a abrir para actualizar', 6000);
+          if (Date.now() - _appStartTime < 10000) {
+            window.location.reload();
+          } else {
+            showToast('🌿 Nueva versión — cerrá y reabrí la app para actualizar', 6000);
+          }
         }
       });
     } catch(e) {}

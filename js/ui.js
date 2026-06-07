@@ -97,7 +97,8 @@ export async function renderHome() {
       <div class="pot-name">${escapeHtml(pot.name)}</div>${plantTypeHtml}
     </div>`;
   }
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px">
+  // Toolbar is rendered separately into #home-toolbar (sticky)
+  const toolbarHtml = `<div class="home-toolbar-inner">
     <div class="section-subtitle">${pots.length} maceta${pots.length!==1?'s':''}</div>
     <div style="display:flex;align-items:center;gap:6px">
       <button class="btn btn-icon btn-secondary home-action-btn" data-action="addPlant" id="add-plant-btn" title="Nueva Planta">
@@ -110,8 +111,11 @@ export async function renderHome() {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
-  </div>
-    <div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
+  </div>`;
+  // Inject into sticky toolbar element
+  const tbEl = document.getElementById('home-toolbar');
+  if (tbEl) { tbEl.innerHTML = toolbarHtml; tbEl.style.display = ''; }
+  return `<div class="pots-grid" id="pots-grid">${potsHtml}</div>`;
 }
 
 // ===== POT DETAIL VIEW =====

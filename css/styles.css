@@ -499,6 +499,40 @@ a { color: var(--accent); text-decoration: none; }
   transform: scale(1.1);
 }
 
+/* ── Home sticky toolbar ── */
+.home-toolbar {
+  position: sticky;
+  top: var(--header-height, 56px);
+  z-index: 90;
+  background: rgba(10,15,13,0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 16px;
+}
+[data-theme="botanical"] .home-toolbar,
+[data-theme="tropical"] .home-toolbar,
+[data-theme="wellness"] .home-toolbar {
+  background: rgba(235,235,232,0.92);
+}
+.home-toolbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 8px 0;
+  gap: 8px;
+}
+
+/* Reorder mode: allow 2-finger scroll */
+.pots-grid.reorder-mode {
+  touch-action: pan-y pinch-zoom;
+}
+.pots-grid.reorder-mode .pot-card[data-pot-id].dragging {
+  touch-action: none;
+}
+
 .app-main {
   flex: 1;
   padding: 20px 16px;

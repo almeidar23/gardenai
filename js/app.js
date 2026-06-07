@@ -188,6 +188,11 @@ async function navigate(hash) {
 
   currentRoute = newRoute;
   document.documentElement.setAttribute('data-route', newRoute);
+  // Hide home toolbar when leaving home
+  if (newRoute !== 'home') {
+    const tb = document.getElementById('home-toolbar');
+    if (tb) tb.style.display = 'none';
+  }
   if (headerHtml) {
     document.getElementById('header-title').innerHTML = headerHtml;
   } else {
@@ -1738,6 +1743,8 @@ function cancelReorderMode() {
 
 function onDragPointerDown(e) {
   if (!reorderMode) return;
+  // Two-finger = scroll, not drag
+  if (e.isPrimary === false) { if (_drag) onDragPointerUp(e); return; }
   const card = e.target.closest('.pot-card[data-pot-id]');
   if (!card || card.classList.contains('pot-card-add')) return;
   e.preventDefault();
@@ -1754,6 +1761,7 @@ function onDragPointerDown(e) {
   });
   document.body.appendChild(clone);
   card.style.opacity = '0.25';
+  card.classList.add('dragging');
 
   _drag = { card, clone, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top };
 
@@ -1786,6 +1794,7 @@ function onDragPointerUp() {
   if (!_drag) return;
   _drag.clone.remove();
   _drag.card.style.opacity = '';
+  _drag.card.classList.remove('dragging');
   document.removeEventListener('pointermove', onDragPointerMove);
   document.removeEventListener('pointerup', onDragPointerUp);
   document.removeEventListener('pointercancel', onDragPointerUp);

@@ -1709,32 +1709,24 @@ function updateReorderBtn(active) {
   }
 }
 
-function onTwoFingerTouchStart(e) {
-  if (e.touches.length < 2) return;
-  // Cancel any active drag
-  if (_drag) onDragPointerUp();
-
-  // Implement manual scroll — iOS ignores touch-action changes mid-gesture
-  let lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-  function onTwoMove(ev) {
-    if (ev.touches.length < 2) return;
-    ev.preventDefault();
-    const currentY = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
-    const delta = lastY - currentY;
-    window.scrollBy(0, delta);
-    lastY = currentY;
+// Auto-scroll when dragging near screen edges (iOS-style)
+let _edgeScrollRaf = null;
+function startEdgeScroll(clientY) {
+  stopEdgeScroll();
+  const ZONE = 100;   // px from edge to start scrolling
+  const MAX_SPEED = 14; // px per frame
+  function frame() {
+    const vh = window.innerHeight;
+    let speed = 0;
+    if (clientY < ZONE)       speed = -MAX_SPEED * (1 - clientY / ZONE);
+    else if (clientY > vh - ZONE) speed =  MAX_SPEED * (1 - (vh - clientY) / ZONE);
+    if (speed !== 0) window.scrollBy(0, speed);
+    _edgeScrollRaf = requestAnimationFrame(frame);
   }
-
-  function onTwoEnd() {
-    document.removeEventListener('touchmove', onTwoMove);
-    document.removeEventListener('touchend', onTwoEnd);
-    document.removeEventListener('touchcancel', onTwoEnd);
-  }
-
-  document.addEventListener('touchmove', onTwoMove, { passive: false });
-  document.addEventListener('touchend', onTwoEnd, { once: true });
-  document.addEventListener('touchcancel', onTwoEnd, { once: true });
+  _edgeScrollRaf = requestAnimationFrame(frame);
+}
+function stopEdgeScroll() {
+  if (_edgeScrollRaf) { cancelAnimationFrame(_edgeScrollRaf); _edgeScrollRaf = null; }
 }
 
 function startReorderMode() {
@@ -1745,8 +1737,7 @@ function startReorderMode() {
   reorderPotIds = [...grid.querySelectorAll('.pot-card[data-pot-id]')].map(el => el.dataset.potId);
   updateReorderBtn(true);
   grid.addEventListener('pointerdown', onDragPointerDown);
-  grid.addEventListener('touchstart', onTwoFingerTouchStart, { passive: true });
-  showToast('Arrastra • 2 dedos para scroll • ✅ para guardar');
+  showToast('Arrastrá las macetas • ✅ para guardar');
 }
 
 async function saveReorderMode() {
@@ -1765,11 +1756,11 @@ function cancelReorderMode() {
   reorderPotIds = [];
   if (_drag) { _drag.clone?.remove(); if (_drag.card) _drag.card.style.opacity = ''; _drag = null; }
   const grid = document.getElementById('pots-grid');
+  stopEdgeScroll();
   if (grid) {
     grid.classList.remove('reorder-mode');
     grid.style.touchAction = '';
     grid.removeEventListener('pointerdown', onDragPointerDown);
-    grid.removeEventListener('touchstart', onTwoFingerTouchStart);
   }
   updateReorderBtn(false);
 }
@@ -1810,6 +1801,9 @@ function onDragPointerMove(e) {
   clone.style.left = (e.clientX - offsetX) + 'px';
   clone.style.top  = (e.clientY - offsetY) + 'px';
 
+  // Auto-scroll when near top/bottom edge
+  startEdgeScroll(e.clientY);
+
   const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pot-card[data-pot-id]');
   if (target && target !== card && !target.classList.contains('pot-card-add')) {
     const grid = document.getElementById('pots-grid');
@@ -1825,6 +1819,7 @@ function onDragPointerMove(e) {
 
 function onDragPointerUp() {
   if (!_drag) return;
+  stopEdgeScroll();
   _drag.clone.remove();
   _drag.card.style.opacity = '';
   _drag.card.classList.remove('dragging');

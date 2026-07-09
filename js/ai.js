@@ -447,6 +447,89 @@ Incluye todas las ${potsData.length} macetas ordenadas de mejor (score alto) a p
   }
 }
 
+async function callGroqChat(systemPrompt, messages) {
+  const apiKey = await getApiKey('groq');
+  const body = {
+    model: 'llama-3.3-70b-versatile',
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+    temperature: 0.7,
+    max_tokens: 1024
+  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  let resp;
+  try {
+    resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('La IA tardó demasiado. Intenta de nuevo.');
+    throw new Error('Sin conexión. Verifica tu internet.');
+  }
+  clearTimeout(timeout);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    if (resp.status === 401 || resp.status === 403 || resp.status === 400) throw new Error('API Key de Groq inválida. Revisa en Ajustes → IA.');
+    if (resp.status === 429) throw new Error('Límite de Groq alcanzado.');
+    throw new Error(err.error?.message || `Error ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+async function callGeminiChat(systemPrompt, messages) {
+  const apiKey = await getApiKey('gemini');
+  const contents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+  };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  let resp;
+  try {
+    resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('Gemini tardó demasiado. Intenta de nuevo.');
+    throw new Error('Sin conexión. Verifica tu internet.');
+  }
+  clearTimeout(timeout);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    if (resp.status === 401) throw new Error('API Key de Gemini inválida. Revisa en Ajustes → IA.');
+    if (resp.status === 429) throw new Error('Límite de Gemini alcanzado.');
+    throw new Error(err.error?.message || `Error ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+export async function chatWithPot(systemPrompt, messages) {
+  const provider = await DB.getSetting('aiProvider') || 'gemini';
+  const primary = provider === 'groq' ? callGroqChat : callGeminiChat;
+  const secondary = provider === 'groq' ? callGeminiChat : callGroqChat;
+  try {
+    return await primary(systemPrompt, messages);
+  } catch(e) {
+    try { return await secondary(systemPrompt, messages); } catch {}
+    throw e;
+  }
+}
+
 /**
  * Check if API key is configured.
  */

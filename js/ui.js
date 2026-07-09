@@ -322,7 +322,30 @@ export async function renderPot(potId) {
   const plantSubtitle = plantTypes.length
     ? `🌸 ${escapeHtml(plantTypes.join(', '))}${pot.description ? ' · ' + escapeHtml(pot.description) : ''}`
     : escapeHtml(pot.description || 'Sin descripción');
-  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${plantSubtitle}</div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
+  return `<div class="flex items-center justify-between mb-6" style="gap:8px"><div class="section-subtitle">${plantSubtitle}</div><div class="flex gap-8"><button class="btn btn-icon btn-secondary" data-navigate="pot/${pot.id}/chat" title="Conversar con la IA">💬</button><button class="btn btn-icon btn-secondary" data-action="openPotSchedule" data-pot-id="${pot.id}" id="schedule-pot-btn" title="Cronograma">📅</button><button class="btn btn-icon btn-secondary" data-action="editPot" data-pot-id="${pot.id}" id="edit-pot-btn" title="Editar">✏️</button><button class="btn btn-icon btn-secondary" data-action="enterSelectMode" id="select-mode-btn" title="Seleccionar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="2"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>${summaryHtml}${content}<button class="fab" data-action="addPhoto" data-pot-id="${pot.id}" id="add-photo-fab" title="Agregar foto">📷</button>`;
+}
+
+// ===== POT CHAT VIEW =====
+export function renderPotChat(pot, messages = []) {
+  const escHtml = (s) => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const greeting = messages.length === 0
+    ? `<div class="chat-msg chat-msg-ai"><div class="chat-bubble">¡Hola! Soy el asistente de <strong>${escHtml(pot.name)}</strong>. Puedes preguntarme sobre riego, luz, corte de hojas, plagas o cualquier cosa sobre tu planta. ¿En qué te ayudo? 🌿</div></div>`
+    : '';
+  const msgsHtml = messages.map(m => {
+    if (m.role === 'user') {
+      return `<div class="chat-msg chat-msg-user"><div class="chat-bubble">${escHtml(m.content)}</div></div>`;
+    }
+    return `<div class="chat-msg chat-msg-ai"><div class="chat-bubble">${escHtml(m.content).replace(/\n/g,'<br>')}</div></div>`;
+  }).join('');
+  return `<div class="chat-page">
+    <div id="chat-messages" class="chat-messages">${greeting}${msgsHtml}</div>
+    <div class="chat-input-bar">
+      <input type="text" id="chat-input" class="chat-input" placeholder="Pregunta sobre tu planta..." autocomplete="off" inputmode="text">
+      <button class="chat-send-btn" data-action="sendPotChat" data-pot-id="${pot.id}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="currentColor" opacity="0.15"/></svg>
+      </button>
+    </div>
+  </div>`;
 }
 
 // ===== PHOTO DETAIL VIEW =====

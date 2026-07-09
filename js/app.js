@@ -8,7 +8,7 @@ import {
   handlePendingRedirect
 } from './firebase-config.js';
 import { captureFromCamera, uploadFromGallery, uploadMultipleFromGallery, blobToDataURL } from './camera.js';
-import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt, recommendPotForPlant } from './ai.js';
+import { analyzePlant, readAnalyzer, detectPhotoType, isConfigured, aiRetryAt, recommendPotForPlant, chatWithPot } from './ai.js';
 import {
   renderHome, renderPot, renderPhotoDetail, renderSettings, renderTasks,
   renderProducts, renderProductDetail, renderPotModal, renderPhotoModal, renderPhotoSourceModal, renderNotesModal, renderEditNoteModal, renderEditAnalysisModal, renderEditDayModal,
@@ -19,7 +19,7 @@ import {
   showToast, clearPhotoCache, getPhotoURL, escapeHtml, toInputDate, mapIssuesToProducts,
   renderAnalysisActionsModal, renderPotModeModal, renderApplyTaskModal,
   renderAddPlantSourceModal, renderPlantLoadingModal, renderPlantRecommendationsModal,
-  renderStatsChipModal
+  renderStatsChipModal, renderPotChat
 } from './ui.js';
 import { runMigration } from './migration.js';
 
@@ -31,6 +31,7 @@ function applyTheme(theme) {
 }
 const modalsEl = () => document.getElementById('modals');
 let currentRoute = '';
+const potChatHistory = {};
 let selectedPhotos = new Set();
 let photoSelectMode = false;
 let selectedPotsTask = new Set();
@@ -149,6 +150,11 @@ async function navigate(hash) {
       ]);
       headerHtml = `<button class="header-back header-back-photo" data-navigate="pot/${parts[1]}">←</button> Foto · ${escapeHtml(photoPot?.emoji||'🪴')} ${escapeHtml(photoPot?.name||'Maceta')}`;
       html = photoHtml;
+    } else if (parts.length > 2 && parts[2] === 'chat') {
+      newRoute = 'pot-chat';
+      const pot = await DB.getPot(Number(parts[1]));
+      headerHtml = `<button class="header-back" data-navigate="pot/${parts[1]}">←</button> 💬 ${escapeHtml(pot?.name||'Maceta')}`;
+      html = renderPotChat(pot || { id: parts[1], name: 'Maceta', emoji: '🪴' }, potChatHistory[parts[1]] || []);
     } else {
       newRoute = 'pot';
       const [pot, potHtml] = await Promise.all([
@@ -201,9 +207,10 @@ async function navigate(hash) {
   mainEl().innerHTML = html;
   if (hash.startsWith('#pot/') && hash.includes('/photo/')) initPhotoZoom();
   if (newRoute === 'product') setupProductDetailForm();
+  if (newRoute === 'pot-chat') setupPotChat(hash.split('/')[1]);
   if (window.location.hash !== hash) history.pushState(null, '', hash);
   updateNav();
-  window.scrollTo(0, 0);
+  if (newRoute !== 'pot-chat') window.scrollTo(0, 0);
   _navigating = false;
 }
 
@@ -218,6 +225,81 @@ function updateNav() {
       (t==='stats' && (currentRoute==='stats'||currentRoute==='stats-day'))
     );
   });
+}
+
+function setupPotChat(potId) {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  // Scroll to bottom in case there are existing messages
+  requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      document.querySelector('[data-action="sendPotChat"]')?.click();
+    }
+  });
+  input.focus();
+}
+
+async function buildPotSystemPrompt(potId) {
+  const [pot, analyses, notes, taskLogs, products] = await Promise.all([
+    DB.getPot(Number(potId)),
+    DB.getAnalysesByPot(Number(potId)),
+    DB.getNotesByPot(Number(potId)),
+    DB.getTaskLogsByPot(Number(potId)),
+    DB.getAllProducts()
+  ]);
+  const productMap = {};
+  for (const p of products) productMap[p.slug] = p;
+
+  const potName = pot?.name || 'Maceta';
+  const plantTypes = pot?.plantTypes || (pot?.plantType ? [pot.plantType] : []);
+  let ctx = `Eres un asistente experto en jardinería y cuidado de plantas. Estás ayudando con la maceta "${potName}" (${pot?.emoji || '🪴'}).`;
+  if (plantTypes.length) ctx += ` Plantas: ${plantTypes.join(', ')}.`;
+  if (pot?.description) ctx += ` Descripción: ${pot.description}.`;
+
+  if (analyses?.length) {
+    analyses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const latestPlant = analyses.find(a => a.type === 'plant' && a.result);
+    const latestSoil = analyses.find(a => a.type === 'analyzer' && a.result);
+    if (latestPlant?.result) {
+      const r = latestPlant.result;
+      ctx += `\n\nÚltimo análisis de planta (${latestPlant.createdAt.slice(0,10)}):`;
+      if (r.plantType) ctx += `\n- Tipo: ${r.plantType}`;
+      ctx += `\n- Estado: ${r.healthStatus} (${r.healthScore}/10)`;
+      if (r.summary) ctx += `\n- Resumen: ${r.summary}`;
+      if (r.waterRequirements) ctx += `\n- Riego requerido: ${r.waterRequirements}`;
+      if (r.sunRequirements) ctx += `\n- Luz requerida: ${r.sunRequirements}`;
+      if (r.issues?.length) ctx += `\n- Problemas detectados: ${r.issues.map(i => `${i.name} (${i.severity})`).join(', ')}`;
+      if (r.recommendations?.length) ctx += `\n- Recomendaciones previas: ${r.recommendations.slice(0,4).join('; ')}`;
+    }
+    if (latestSoil?.result) {
+      const r = latestSoil.result;
+      ctx += `\n\nDatos del suelo (${latestSoil.createdAt.slice(0,10)}):`;
+      if (r.humidity && r.humidity !== 'N/A') ctx += ` humedad ${r.humidity}%,`;
+      if (r.ph && r.ph !== 'N/A') ctx += ` pH ${r.ph},`;
+      if (r.temperature && r.temperature !== 'N/A') ctx += ` temperatura ${r.temperature}°C,`;
+      if (r.fertility && r.fertility !== 'N/A') ctx += ` fertilidad ${r.fertility}.`;
+    }
+  }
+
+  if (taskLogs?.length) {
+    taskLogs.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
+    const recent = taskLogs.slice(0, 5).map(l => {
+      const prod = productMap[l.productSlug];
+      return prod ? `${prod.icon} ${prod.name} el ${l.appliedAt?.slice(0,10)}` : null;
+    }).filter(Boolean);
+    if (recent.length) ctx += `\n\nÚltimos productos aplicados: ${recent.join(', ')}.`;
+  }
+
+  if (notes?.length) {
+    notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const recentNote = notes[0]?.content;
+    if (recentNote) ctx += `\n\nÚltima nota: "${recentNote.slice(0, 200)}".`;
+  }
+
+  ctx += '\n\nResponde en español, de forma amigable, práctica y concisa. Sé directo y útil. No repitas el contexto en cada respuesta.';
+  return ctx;
 }
 
 async function runAddPlantFlow(blob) {
@@ -325,6 +407,61 @@ async function handleAction(action, target) {
       for (const potId of checkedPots) await DB.addTaskLog({ potId: Number(potId), productSlug: slug });
       closeModal();
       showToast(`✅ Aplicado a ${checkedPots.length} maceta${checkedPots.length!==1?'s':''}`);
+      break;
+    }
+    case 'sendPotChat': {
+      const potId = target.dataset.potId;
+      const input = document.getElementById('chat-input');
+      if (!input) break;
+      const msg = input.value.trim();
+      if (!msg) break;
+      input.value = '';
+      const msgsContainer = document.getElementById('chat-messages');
+      if (!msgsContainer) break;
+
+      // Add user bubble immediately
+      const userBubble = document.createElement('div');
+      userBubble.className = 'chat-msg chat-msg-user';
+      userBubble.innerHTML = `<div class="chat-bubble">${escapeHtml(msg)}</div>`;
+      msgsContainer.appendChild(userBubble);
+
+      // Show typing indicator
+      const typingEl = document.createElement('div');
+      typingEl.id = 'chat-typing';
+      typingEl.className = 'chat-msg chat-msg-ai';
+      typingEl.innerHTML = '<div class="chat-bubble chat-typing"><span></span><span></span><span></span></div>';
+      msgsContainer.appendChild(typingEl);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+      if (!potChatHistory[potId]) potChatHistory[potId] = [];
+      potChatHistory[potId].push({ role: 'user', content: msg });
+
+      const sendBtn = document.querySelector('[data-action="sendPotChat"]');
+      if (sendBtn) sendBtn.disabled = true;
+      input.disabled = true;
+
+      try {
+        const systemPrompt = await buildPotSystemPrompt(potId);
+        const reply = await chatWithPot(systemPrompt, potChatHistory[potId]);
+        document.getElementById('chat-typing')?.remove();
+        potChatHistory[potId].push({ role: 'assistant', content: reply });
+        const aiBubble = document.createElement('div');
+        aiBubble.className = 'chat-msg chat-msg-ai';
+        aiBubble.innerHTML = `<div class="chat-bubble">${escapeHtml(reply).replace(/\n/g, '<br>')}</div>`;
+        msgsContainer.appendChild(aiBubble);
+      } catch(e) {
+        document.getElementById('chat-typing')?.remove();
+        potChatHistory[potId].pop();
+        const errBubble = document.createElement('div');
+        errBubble.className = 'chat-msg chat-msg-ai';
+        errBubble.innerHTML = `<div class="chat-bubble" style="color:var(--danger)">❌ ${escapeHtml(e.message)}</div>`;
+        msgsContainer.appendChild(errBubble);
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
       break;
     }
     case 'enterPotSelectMode': {
